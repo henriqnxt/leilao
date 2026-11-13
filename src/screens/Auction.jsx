@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { INTRO, TEMPO_INICIAL, cabe, formacaoCabe } from '../engine/auction.js';
 import { formacoes } from '../engine/formations.js';
-import { bandeira, jogador, PAISES } from '../data/jogadores.js';
+import { bandeira, escala, jogador, PAISES } from '../data/jogadores.js';
 import { NOME_POS, NOME_SETOR, SETOR } from '../engine/posicoes.js';
 import { preCarregar } from '../lib/fotos.js';
 import { confete, som } from '../lib/efeitos.js';
@@ -27,9 +27,9 @@ function Walkout({ j, modo, inicio, mostrarStats, aoPular }) {
   const passo = passou < 250 ? 0 : passou < 1050 ? 1 : passou < 1850 ? 2 : 3;
   const ultimo = useRef(-1);
   useEffect(() => {
-    if (passo !== ultimo.current && passo > 0) som(passo === 3 && mostrarStats && j.nota >= 88 ? 'bum' : 'tique');
+    if (passo !== ultimo.current && passo > 0) som(passo === 3 && mostrarStats && escala(j) >= 88 ? 'bum' : 'tique');
     ultimo.current = passo;
-  }, [passo, mostrarStats, j.nota]);
+  }, [passo, mostrarStats, j]);
   return (
     <div className="walkout" data-passo={passo} style={{ '--brilho': BRILHO[modo] }} role="dialog" aria-label="Próximo jogador">
       <div className="feixes" />
@@ -303,6 +303,12 @@ export default function Auction({ estado, eu, desvio, conexao, enviar }) {
                   <span>{NOME_SETOR[SETOR[j.pos]]}</span>
                   <span>{j.pos}</span>
                 </div>
+              </div>
+              <div className="restam">
+                Faltam <b>{L.fila.length - L.i - 1}</b> no leilão
+                <span>
+                  lote {L.i + 1}/{L.fila.length}
+                </span>
               </div>
               <div className="relogio">
                 <svg className="anel" viewBox="0 0 64 64" aria-label="Tempo restante">

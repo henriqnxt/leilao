@@ -51,7 +51,7 @@ export default function Escalacao({ estado, eu, souHost, conexao, enviar }) {
       const pos = vagasDa(config.emCampo, meu.formacao);
       const a = jogador(meu.vagas[marcada]);
       const b = jogador(meu.vagas[i]);
-      const ok = (!a || notaNaVaga(a, pos[i]) > 0) && (!b || notaNaVaga(b, pos[marcada]) > 0);
+      const ok = (!a || notaNaVaga(a, pos[i], pos.length) > 0) && (!b || notaNaVaga(b, pos[marcada], pos.length) > 0);
       if (!ok) setAviso('Não dá: cada jogador só pode ir para uma vaga do próprio setor.');
       else {
         enviar({ tipo: 'mover', origem: marcada, destino: i });
@@ -109,7 +109,7 @@ export default function Escalacao({ estado, eu, souHost, conexao, enviar }) {
             </select>
           </div>
           <Campo emCampo={config.emCampo} formacao={meu.formacao} vagas={meu.vagas} modo={config.modo} mostrarStats marcada={marcada} aoTocar={tocar} alto />
-          <p className={`dica ${aviso ? 'alerta' : ''}`}>{aviso || 'Toque em dois jogadores para trocar de lugar. Fora da posição de origem, ele rende menos.'}</p>
+          <p className={`dica ${aviso ? 'alerta' : ''}`}>{aviso || (config.emCampo === 5 ? 'Toque em dois jogadores para trocar de lugar. No 5 em campo, todo jogador de linha rende 100% em qualquer vaga.' : 'Toque em dois jogadores para trocar de lugar. Fora da posição de origem, ele rende menos.')}</p>
         </section>
 
         <div className="coluna">
@@ -154,12 +154,14 @@ export default function Escalacao({ estado, eu, souHost, conexao, enviar }) {
               </div>
             )}
           </section>
+          {config.emCampo === 11 && (
           <section className="painel">
             <span className="sobre">Rendimento por posição</span>
             <div style={{ marginTop: 8 }}>
               <TabelaRendimento />
             </div>
           </section>
+          )}
           {souHost ? (
             <button type="button" className="btn ouro grande" onClick={() => enviar({ tipo: 'campeonato' })}>
               Começar o campeonato
@@ -195,7 +197,7 @@ export default function Escalacao({ estado, eu, souHost, conexao, enviar }) {
               <ul>
                 {tm.vagas.map((id, i) => {
                   const j = jogador(id);
-                  const n = notaNaVaga(j, pos[i]);
+                  const n = notaNaVaga(j, pos[i], pos.length);
                   return (
                     <li key={`${id}-${i}`}>
                       <span className="pos-tag" style={{ background: CORES[pos[i]] }}>
