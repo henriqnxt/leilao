@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import AoVivo, { duracaoDe } from '../components/AoVivo.jsx';
 import { classificacao } from '../engine/campeonato.js';
 import { confete, som } from '../lib/efeitos.js';
 import Topo, { AvisoRede } from '../components/Topo.jsx';
@@ -38,16 +39,30 @@ function Jogo({ g, nome }) {
   );
 }
 
-export default function Campeonato({ estado, eu, souHost, conexao, enviar }) {
+export default function Campeonato({ estado, eu, souHost, conexao, enviar, desvio = 0 }) {
+  const [agora, setAgora] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setAgora(Date.now()), 400);
+    return () => clearInterval(t);
+  }, []);
   const { camp, tecnicos } = estado;
   const nome = (id) => (tecnicos.find((t) => t.id === id) || {}).nome || '?';
   const ids = tecnicos.map((t) => t.id);
-  const vistos = camp.passos.slice(0, camp.visto);
+  const ao = camp.aoVivo;
+  const passoAo = ao ? camp.passos[ao.passo] : null;
+  const inicioAo = ao ? ao.inicio + desvio : 0;
+  const aoVivo = !!ao && agora < inicioAo + duracaoDe(passoAo);
+  // a rodada ao vivo só entra na tabela e na lista quando o jogo acaba
+  const vistos = camp.passos.slice(0, aoVivo ? camp.visto - 1 : camp.visto);
+  const cor = (id) => CORES_TEC[Math.max(0, tecnicos.findIndex((t) => t.id === id)) % CORES_TEC.length];
+  useEffect(() => {
+    if (souHost && ao && !aoVivo) enviar({ tipo: 'fimAoVivo' });
+  }, [souHost, ao, aoVivo, enviar]);
   const rodadas = vistos.filter((p) => p.tipo === 'rodada');
   const temTabela = camp.passos.some((p) => p.tipo === 'rodada');
   const tabela = temTabela ? classificacao(ids, rodadas.map((p) => p.jogos)) : [];
   const vagasMata = camp.passos.some((p) => p.tipo === 'mata') && temTabela ? (ids.length >= 4 ? 4 : 2) : 0;
-  const acabou = camp.visto >= camp.passos.length;
+  const acabou = camp.visto >= camp.passos.length && !aoVivo;
   const proximo = camp.passos[camp.visto];
 
   const avisou = useRef(false);
@@ -93,7 +108,11 @@ export default function Campeonato({ estado, eu, souHost, conexao, enviar }) {
         <div>
           <span className="sobre">Campeonato</span>
           <h1 className="titulo" style={{ fontSize: 'clamp(32px,5vw,52px)', marginTop: 6 }}>
-            {camp.visto === 0 ? (
+            {aoVivo ? (
+              <>
+                {passoAo.nome} <em>ao vivo</em>
+              </>
+            ) : camp.visto === 0 ? (
               <>
                 Bola <em>rolando</em>
               </>
@@ -109,6 +128,7 @@ export default function Campeonato({ estado, eu, souHost, conexao, enviar }) {
 
       <div className="duas">
         <div className="coluna">
+          {aoVivo && <AoVivo key={ao.passo} passo={passoAo} inicio={inicioAo} estado={estado} eu={eu} nome={nome} cor={cor} />}
           {[...vistos].reverse().map((p) => (
             <section className="painel" key={p.nome}>
               <span className="sobre">{p.nome}</span>
@@ -174,7 +194,12 @@ export default function Campeonato({ estado, eu, souHost, conexao, enviar }) {
               {vagasMata > 0 && <p className="dica" style={{ textAlign: 'left', marginTop: 8 }}>Os {vagasMata} primeiros vão para o mata-mata.</p>}
             </section>
           )}
-          {souHost && !acabou && (
+          {souHost && aoVivo && (
+            <button type="button" className="btn escuro" onClick={() => enviar({ tipo: 'fimAoVivo' })}>
+              Ver resultado agora
+            </button>
+          )}
+          {souHost && !acabou && !aoVivo && (
             <>
               <button type="button" className="btn ouro grande" onClick={() => enviar({ tipo: 'revelar' })}>
                 {proximo ? `Jogar: ${proximo.nome}` : 'Ver resultado'}
