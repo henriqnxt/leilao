@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #0f3d2e;
+  color: #f6f3e7;
+  font-family: Figtree, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Linha de cal do gramado: o único enfeite da página */
+.gramado {
+  background-image: radial-gradient(
+    circle at 50% -40px,
+    transparent 0 138px,
+    rgba(246, 243, 231, 0.16) 138px 141px,
+    transparent 141px
+  );
+  background-repeat: no-repeat;
+}
+
+.area-segura {
+  padding-top: max(1.25rem, env(safe-area-inset-top));
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
+:focus-visible {
+  outline: 3px solid #ffd23f;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
