@@ -2,6 +2,8 @@
 import { escala, idsDoModo, jogador } from '../data/jogadores.js';
 import { existe, formacaoPadrao, vagasDa } from './formations.js';
 import { rendimento, SETOR } from './posicoes.js';
+import { TATICA_PADRAO, valida } from './tatica.js';
+import { valida as validaInstrucao } from './instrucoes.js';
 
 export const CAIXA = 100; // todo técnico começa com R$ 100
 export const TEMPO_INICIAL = 10000; // relógio começa em 10 s
@@ -84,7 +86,7 @@ function lote(L, i, agora) {
 const VAGAS_SETOR = { 11: { GOL: 1, DEF: 4, MEI: 3, ATA: 3 }, 5: { GOL: 1, DEF: 2, MEI: 1, ATA: 1 } };
 export const FOLGA = 1.5;
 // Sobra por setor: pouca sobra de defensor, mais sobra de meia e atacante (os mais disputados).
-const FOLGA_SETOR = { GOL: 1.3, DEF: 1.1, MEI: 1.6, ATA: 1.8 };
+const FOLGA_SETOR = { GOL: 1.2, DEF: 1.05, MEI: 1.4, ATA: 1.5 };
 
 export function tamanhoDoPote(nTecnicos, emCampo) {
   const v = VAGAS_SETOR[emCampo] || VAGAS_SETOR[11];
@@ -172,11 +174,40 @@ export function botsAgem(s, agora) {
   return novo;
 }
 
+// Teto de lance: precisa sobrar R$ 1 para cada vaga que ainda falta preencher.
+export function lanceMaximo(t) {
+  const livres = t.vagas.filter((v) => v === null).length;
+  return Math.max(0, t.caixa - Math.max(0, livres - 1));
+}
+
+// Fim do leilão: quem ficou com vaga aberta completa com jogadores reais que sobraram
+// (sorteados entre os que ninguém comprou), pagando R$ 1 cada.
 function encerrar(s) {
+  const vendidos = new Set(Object.values(s.times).flatMap((t) => t.vagas.filter(Boolean)));
+  const sobra = embaralhar(s.leilao.fila.filter((id) => !vendidos.has(id)));
+  const resto = embaralhar(idsDoModo(s.config.modo).filter((id) => !vendidos.has(id) && !sobra.includes(id)));
+  // em sala muito cheia, se faltar alguém do modo, vem de outra competição (sempre jogador real)
+  const outros = embaralhar(['br', 'eu', 'wc'].filter((m) => m !== s.config.modo).flatMap((m) => idsDoModo(m)));
+  const livres = [...sobra, ...resto, ...outros];
   const times = {};
   Object.entries(s.times).forEach(([id, t]) => {
     const posicoes = posicoesDo(s, t);
-    times[id] = { ...t, vagas: t.vagas.map((v, k) => v || `base-${posicoes[k]}`) };
+    let caixa = t.caixa;
+    const pagos = { ...t.pagos };
+    const completados = {};
+    const vagas = t.vagas.map((v, k) => {
+      if (v) return v;
+      const i = livres.findIndex((pid) => rendimento(jogador(pid).pos, posicoes[k], posicoes.length) >= 0.99);
+      const j = i >= 0 ? i : livres.findIndex((pid) => rendimento(jogador(pid).pos, posicoes[k], posicoes.length) > 0);
+      if (j < 0) return `base-${posicoes[k]}`;
+      const [pid] = livres.splice(j, 1);
+      const preco = Math.min(1, caixa);
+      caixa -= preco;
+      pagos[pid] = preco;
+      completados[pid] = true;
+      return pid;
+    });
+    times[id] = { ...t, vagas, caixa, pagos, completados };
   });
   return { ...s, fase: 'escalacao', times, leilao: { ...s.leilao, lance: 0, lider: null, fim: null, batido: null, proximoEm: null } };
 }
@@ -186,7 +217,7 @@ function interessados(s) {
   const L = s.leilao;
   const id = L.fila[L.i];
   return Object.entries(s.times).filter(
-    ([tid, t]) => tid !== L.lider && !L.passaram.includes(tid) && t.caixa > L.lance && cabe(s, tid, id),
+    ([tid, t]) => tid !== L.lider && !L.passaram.includes(tid) && lanceMaximo(t) > L.lance && cabe(s, tid, id),
   );
 }
 
@@ -234,7 +265,7 @@ export function reduzirLeilao(s, a) {
       const valor = Math.floor(Number(a.valor));
       if (s.fase !== 'leilao' || L.batido || a.de === L.lider || a.agora < L.inicio) return s;
       if (L.passaram.includes(a.de)) return s;
-      if (!Number.isFinite(valor) || valor <= L.lance || valor > t.caixa) return s;
+      if (!Number.isFinite(valor) || valor <= L.lance || valor > lanceMaximo(t)) return s;
       if (!cabe(s, a.de, L.fila[L.i])) return s;
       // +1 s por lance, sem passar de 5 s (e sem tirar tempo de ninguém)
       const resta = Math.max(0, L.fim - a.agora);
@@ -255,6 +286,19 @@ export function reduzirLeilao(s, a) {
       if (!vagas) return s; // alguém ficaria fora do setor: não troca
       if (s.fase === 'escalacao') vagas = vagas.map((v, k) => v || `base-${posicoes[k]}`);
       return { ...s, times: { ...s.times, [a.de]: { ...t, formacao: a.formacao, vagas } } };
+    }
+
+    case 'tatica': {
+      const nova = { ...(t.tatica || TATICA_PADRAO), ...(a.tatica || {}) };
+      if (!valida(nova)) return s;
+      return { ...s, times: { ...s.times, [a.de]: { ...t, tatica: nova } } };
+    }
+
+    case 'instrucao': {
+      const posicoes = vagasDa(emCampo, t.formacao);
+      const k = a.vaga;
+      if (!Number.isInteger(k) || k < 0 || k >= posicoes.length || !validaInstrucao(posicoes[k], a.valor)) return s;
+      return { ...s, times: { ...s.times, [a.de]: { ...t, instrucoes: { ...(t.instrucoes || {}), [k]: a.valor } } } };
     }
 
     case 'mover': {
