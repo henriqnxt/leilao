@@ -1,9 +1,9 @@
-// Foto real do jogador, buscada na Wikipédia / Wikimedia Commons (só imagens de uso livre).
-// Ordem: 1) foto da temporada no Commons  2) foto principal da página na Wikipédia  3) silhueta.
+// Foto real do jogador, buscada na Wikipédia (só imagens de uso livre).
+// Só usa a foto quando tem certeza de que a página é do próprio jogador; senão, fica a silhueta.
 // Cada aparelho busca sozinho e guarda o resultado, para não buscar de novo.
 import { createContext, useContext, useEffect, useState } from 'react';
 
-const CHAVE = 'leilao:fotos:v3'; // v3: só aceita página de futebolista
+const CHAVE = 'leilao:fotos:v4'; // v4: só aceita foto confirmada do próprio jogador
 let guardadas = {};
 try {
   guardadas = JSON.parse(localStorage.getItem(CHAVE)) || {};
@@ -29,56 +29,44 @@ async function json(url) {
   return r.json();
 }
 
-// Commons: arquivos de imagem com nome + clube/seleção + ano no título ou descrição.
-async function daTemporada(j) {
-  const sobrenome = normal(j.busca || j.nome).split(' ').filter((p) => p.length > 3).pop() || normal(j.nome);
-  const primeiro = normal(j.nome).split(' ')[0];
-  const contexto = j.modo === 'wc' ? `${j.ano} World Cup` : `${j.clube} ${j.ano}`;
-  const termo = `${j.busca || j.nome} ${contexto} filetype:bitmap`;
-  const url =
-    'https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrlimit=6' +
-    `&gsrsearch=${encodeURIComponent(termo)}&prop=imageinfo&iiprop=url&iiurlwidth=360&format=json&origin=*`;
-  const dados = await json(url);
-  const paginas = Object.values((dados.query && dados.query.pages) || {}).sort((a, b) => (a.index || 0) - (b.index || 0));
-  for (const p of paginas) {
-    const titulo = normal(p.title);
-    const info = p.imageinfo && p.imageinfo[0];
-    if (info && info.thumburl && titulo.includes(sobrenome) && titulo.includes(primeiro) && titulo.includes(String(j.ano).slice(0, 4))) return info.thumburl;
-  }
-  return '';
-}
-
 // Busca na Wikipédia e só aceita a página se a descrição for de jogador de futebol
 // (evita pegar a foto de outra pessoa com o mesmo nome).
 const E_FUTEBOL = /futebol|football|soccer|goleiro|goalkeeper|calcio|fútbol/i;
 
-async function naWiki(lingua, termo) {
+// A página só vale se: (1) é de jogador de futebol, (2) o título tem o nome do jogador e
+// (3) o resumo da página cita o clube/seleção daquela carta. Sem isso, fica sem foto.
+async function naWiki(lingua, termo, j) {
   const url =
     `https://${lingua}.wikipedia.org/w/api.php?action=query&generator=search&gsrlimit=6` +
-    `&gsrsearch=${encodeURIComponent(termo)}&prop=pageimages|description&piprop=thumbnail&pithumbsize=360` +
-    '&pilicense=free&format=json&origin=*';
+    `&gsrsearch=${encodeURIComponent(termo)}&prop=pageimages|description|extracts&piprop=thumbnail&pithumbsize=360` +
+    '&pilicense=free&exintro=1&explaintext=1&exlimit=max&exchars=1200&format=json&origin=*';
   const dados = await json(url);
   const paginas = Object.values((dados.query && dados.query.pages) || {}).sort((a, b) => (a.index || 0) - (b.index || 0));
+  const nomes = normal(j.nome).split(/[^a-z]+/).filter((p) => p.length >= 3);
+  const completo = normal(j.busca || '');
+  const clube = normal(j.clube).split(/[^a-z]+/).filter((p) => p.length >= 4);
+  const pais = normal(PAIS_EN[j.pais] || '');
   for (const p of paginas) {
-    if (p.thumbnail && p.thumbnail.source && E_FUTEBOL.test(p.description || '')) return p.thumbnail.source;
+    if (!p.thumbnail || !p.thumbnail.source || !E_FUTEBOL.test(p.description || '')) continue;
+    const titulo = normal(p.title);
+    if (!(nomes.length && nomes.every((n) => titulo.includes(n))) && !(completo && titulo.includes(completo))) continue;
+    const texto = normal(`${p.extract || ''} ${p.description || ''}`);
+    const citaClube = j.modo === 'wc' ? texto.includes(normal(j.clube)) || (pais && texto.includes(pais)) || /selec|national team/.test(texto) : clube.some((c) => texto.includes(c));
+    if (citaClube) return p.thumbnail.source;
   }
   return '';
 }
 
+const PAIS_EN = { br: 'brazil', ar: 'argentina', it: 'italy', fr: 'france', de: 'germany', es: 'spain', 'gb-eng': 'england', pt: 'portugal', nl: 'netherlands', uy: 'uruguay', hr: 'croatia' };
+
 async function procurar(j) {
-  try {
-    const t = await daTemporada(j);
-    if (t) return t;
-  } catch {
-    /* segue para a foto principal */
-  }
   const base = j.busca || j.nome;
   const tentativas = [
     ['pt', `${base} futebolista`],
     ['en', `${base} footballer`],
   ];
   for (const [lingua, termo] of tentativas) {
-    const achou = await naWiki(lingua, termo);
+    const achou = await naWiki(lingua, termo, j);
     if (achou) return achou;
   }
   return '';
