@@ -27,7 +27,7 @@ function Campo({ emCampo, formacao, vagas, modo, mostrarStats, destaque, marcada
         const marc = marcada === i ? ' marcada' : '';
         const Tag = aoTocar ? 'button' : 'div';
         if (!j) {
-          const f = destaque ? rendimento(destaque, pos) : 0;
+          const f = destaque ? rendimento(destaque, pos, emCampo) : 0;
           return (
             <Tag key={i} type={aoTocar ? 'button' : undefined} className={`mini vazia${f ? ' cabe' : ''}${marc}${aoTocar ? ' tocavel' : ''}`} style={estilo} onClick={tocar} aria-label={`Vaga de ${pos} livre`}>
               <div className="mc">
@@ -40,8 +40,8 @@ function Campo({ emCampo, formacao, vagas, modo, mostrarStats, destaque, marcada
             </Tag>
           );
         }
-        const f = rendimento(j.pos, pos);
-        const n = notaNaVaga(j, pos);
+        const f = rendimento(j.pos, pos, emCampo);
+        const n = notaNaVaga(j, pos, emCampo);
         return (
           <Tag key={i} type={aoTocar ? 'button' : undefined} className={`mini${marc}${aoTocar ? ' tocavel' : ''}`} style={estilo} onClick={tocar} aria-label={`${j.nome}, ${j.pos} jogando de ${pos}`}>
             <div className="mc">

@@ -1,13 +1,14 @@
 import { memo, useState } from 'react';
-import { bandeira, ROTULOS, stats as statsDe } from '../data/jogadores.js';
+import { bandeira, escala, ROTULOS, stats as statsDe } from '../data/jogadores.js';
 import { useFoto } from '../lib/fotos.js';
 
 const NOME_MODO = { br: 'Brasileirão', eu: '5 Grandes Ligas', wc: 'Copa do Mundo' };
 const CAMISA = { br: ['#178a4c', '#f6cf6a'], eu: ['#2852b8', '#e8f0ff'], wc: ['#a01d2e', '#ffd77a'] };
 
-export function raridade(nota, mostrar) {
+export function raridade(j, mostrar) {
   if (!mostrar) return 'misterio';
-  return nota >= 88 ? 'elite' : nota >= 78 ? '' : 'comum';
+  const e = escala(j);
+  return e >= 91 ? "elite" : e >= 79 ? "" : "comum";
 }
 
 export function Emblema({ modo }) {
@@ -74,7 +75,7 @@ export function FotoCarta({ j, modo }) {
 
 // Carta completa (leilão, capa). "mostrarStats" falso esconde nota, stats e raridade.
 function Carta({ j, modo, mostrarStats = true, lote, estilo, refCarta }) {
-  const r = raridade(j.nota, mostrarStats);
+  const r = raridade(j, mostrarStats);
   const goleiro = j.pos === 'GOL';
   const valores = statsDe(j);
   const rotulos = goleiro ? ROTULOS.gol : ROTULOS.linha;
@@ -144,7 +145,7 @@ export function Verso({ modo }) {
 // Carta pequena do campinho: só moldura, foto, nota e posição.
 export function CartaMini({ j, modo, mostrarStats }) {
   return (
-    <div className={`carta ${modo} ${raridade(j.nota, mostrarStats)}`}>
+    <div className={`carta ${modo} ${raridade(j, mostrarStats)}`}>
       <div className="moldura forma" />
       <div className="miolo forma">
         <div className="raios" />
