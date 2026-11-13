@@ -4,7 +4,9 @@ import { iniciarLeilao, reduzirLeilao } from './auction.js';
 import { montarCampeonato } from './campeonato.js';
 
 export const MAX_TECNICOS = 16;
-export const MIN_TECNICOS = 2; // os bots da próxima etapa vão permitir jogar sozinho
+export const MIN_TECNICOS = 2; // conta bots: dá para jogar sozinho contra bots
+
+const NOMES_BOT = ['Telê Bot', 'Felipão Bot', 'Zagallo Bot', 'Muricy Bot', 'Tite Bot', 'Luxa Bot', 'Abel Bot', 'Mano Bot', 'Cuca Bot', 'Renato Bot', 'Parreira Bot', 'Dorival Bot', 'Jesus Bot', 'Sampaoli Bot', 'Diniz Bot'];
 
 export const MODOS_IDS = ['br', 'eu', 'wc'];
 
@@ -75,6 +77,14 @@ export function reduzir(s, a) {
       // o dono saiu: passa a sala para o próximo da lista
       const proximo = tecnicos.find((t) => !t.bot);
       return proximo ? { ...s, tecnicos, hostId: proximo.id, epoch: s.epoch + 1 } : { ...s, tecnicos };
+    }
+
+    case 'bot': {
+      if (!souHost || s.fase !== 'lobby' || s.tecnicos.length >= MAX_TECNICOS) return s;
+      const usados = s.tecnicos.map((t) => t.nome);
+      const nome = NOMES_BOT.find((n) => !usados.includes(n)) || `Bot ${s.tecnicos.length + 1}`;
+      const id = `bot-${Date.now().toString(36)}-${s.tecnicos.length}`;
+      return { ...s, tecnicos: [...s.tecnicos, { id, nome, bot: true }] };
     }
 
     case 'remover': {
