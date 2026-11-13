@@ -357,6 +357,10 @@ details.elenco li { display: flex; align-items: center; gap: 8px; font-size: 13p
 .campeao svg { width: 90px; height: 110px; filter: drop-shadow(0 0 30px rgba(242, 193, 78, 0.6)); animation: respira 2.5s infinite; }
 .campeao b { font: 900 clamp(34px, 7vw, 60px)/0.95 var(--f-display); text-transform: uppercase; background: linear-gradient(180deg, #fff, var(--gold)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
+.restam { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; font-size: 13px; color: var(--mute); background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; }
+.restam b { font: 700 18px var(--f-num); color: var(--amber); }
+.restam span { margin-left: auto; font: 600 11px var(--f-num); }
+
 /* ===== jogo ao vivo ===== */
 .aovivo { display: flex; flex-direction: column; gap: 10px; border-color: color-mix(in srgb, var(--live) 45%, var(--line)); }
 .av-topo { display: flex; align-items: center; gap: 10px; }
@@ -424,6 +428,7 @@ details.elenco li { display: flex; align-items: center; gap: 8px; font-size: 13p
   .martelo .regra-tempo { display: none; }
   .historico div:nth-child(n + 3) { display: none; }
   .lance-grande { font-size: 40px; }
+  .restam span { display: none; }
   .doca .btn { font-size: 18px; padding: 12px 4px; }
   .placa .p b { font-size: 52px; }
   .leque { height: 260px; }
