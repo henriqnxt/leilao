@@ -1,5 +1,5 @@
 // Regras do leilão. Funções puras, rodadas pelo host.
-import { idsDoModo, jogador } from '../data/jogadores.js';
+import { escala, idsDoModo, jogador } from '../data/jogadores.js';
 import { existe, formacaoPadrao, vagasDa } from './formations.js';
 import { rendimento, SETOR } from './posicoes.js';
 
@@ -27,7 +27,7 @@ function melhorVaga(vagas, posicoes, pos) {
   let r = 0;
   vagas.forEach((v, k) => {
     if (v !== null) return;
-    const f = rendimento(pos, posicoes[k]);
+    const f = rendimento(pos, posicoes[k], posicoes.length);
     if (f > r) {
       r = f;
       melhor = k;
@@ -83,10 +83,12 @@ function lote(L, i, agora) {
 // então craques nem sempre aparecem.
 const VAGAS_SETOR = { 11: { GOL: 1, DEF: 4, MEI: 3, ATA: 3 }, 5: { GOL: 1, DEF: 2, MEI: 1, ATA: 1 } };
 export const FOLGA = 1.5;
+// Sobra por setor: pouca sobra de defensor, mais sobra de meia e atacante (os mais disputados).
+const FOLGA_SETOR = { GOL: 1.3, DEF: 1.1, MEI: 1.6, ATA: 1.8 };
 
 export function tamanhoDoPote(nTecnicos, emCampo) {
   const v = VAGAS_SETOR[emCampo] || VAGAS_SETOR[11];
-  return Object.values(v).reduce((a, k) => a + Math.ceil(nTecnicos * k * FOLGA) + 1, 0);
+  return Object.entries(v).reduce((a, [setor, k]) => a + Math.ceil(nTecnicos * k * FOLGA_SETOR[setor]) + 1, 0);
 }
 
 function sortearPote(modo, nTecnicos, emCampo) {
@@ -94,7 +96,7 @@ function sortearPote(modo, nTecnicos, emCampo) {
   const todos = embaralhar(idsDoModo(modo));
   const pote = [];
   Object.entries(v).forEach(([setor, k]) => {
-    const quer = Math.ceil(nTecnicos * k * FOLGA) + 1;
+    const quer = Math.ceil(nTecnicos * k * FOLGA_SETOR[setor]) + 1;
     pote.push(...todos.filter((id) => SETOR[jogador(id).pos] === setor).slice(0, quer));
   });
   return embaralhar(pote);
@@ -125,11 +127,11 @@ function precoMaximo(s, botId, id) {
   const j = jogador(id);
   const livres = t.vagas.filter((v) => v === null).length;
   if (!livres) return 0;
-  const lembra = s.config.stats ? j.nota : j.nota + Math.round((sorte(`${botId}:${id}:m`) - 0.5) * 12);
+  const lembra = escala(j) + (s.config.stats ? 0 : Math.round((sorte(`${botId}:${id}:m`) - 0.5) * 12));
   const posicoes = vagasDa(s.config.emCampo, t.formacao);
   let melhor = 0;
   t.vagas.forEach((v, k) => {
-    if (v === null) melhor = Math.max(melhor, rendimento(j.pos, posicoes[k]));
+    if (v === null) melhor = Math.max(melhor, rendimento(j.pos, posicoes[k], posicoes.length));
   });
   const nota = lembra * melhor;
   const media = t.caixa / livres;
@@ -263,7 +265,7 @@ export function reduzirLeilao(s, a) {
       const vagas = [...t.vagas];
       [vagas[origem], vagas[destino]] = [vagas[destino], vagas[origem]];
       // ninguém sai do próprio setor
-      const valido = [origem, destino].every((k) => !vagas[k] || rendimento(jogador(vagas[k]).pos, posicoes[k]) > 0);
+      const valido = [origem, destino].every((k) => !vagas[k] || rendimento(jogador(vagas[k]).pos, posicoes[k], posicoes.length) > 0);
       if (!valido) return s;
       return { ...s, times: { ...s.times, [a.de]: { ...t, vagas } } };
     }

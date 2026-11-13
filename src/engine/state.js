@@ -119,7 +119,14 @@ export function reduzir(s, a) {
       if (!souHost || s.fase !== 'campeonato' || !s.camp) return s;
       const visto = Math.min(s.camp.passos.length, a.tudo ? s.camp.passos.length : s.camp.visto + 1);
       if (visto === s.camp.visto) return s;
-      return { ...s, camp: { ...s.camp, visto } };
+      // a rodada revelada passa "ao vivo", minuto a minuto, para todos ao mesmo tempo
+      const aoVivo = a.tudo ? null : { passo: visto - 1, inicio: a.agora || Date.now() };
+      return { ...s, camp: { ...s.camp, visto, aoVivo } };
+    }
+
+    case 'fimAoVivo': {
+      if (!souHost || s.fase !== 'campeonato' || !s.camp || !s.camp.aoVivo) return s;
+      return { ...s, camp: { ...s.camp, aoVivo: null } };
     }
 
     case 'reiniciar': {
