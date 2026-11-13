@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EM_CAMPO, FORMATOS, MAX_TECNICOS, MIN_TECNICOS } from '../engine/state.js';
 import { MODOS } from '../data/jogadores.js';
+import { tamanhoDoPote } from '../engine/auction.js';
 import Topo, { AvisoRede } from '../components/Topo.jsx';
 import { Emblema } from '../components/Carta.jsx';
 
@@ -129,7 +130,7 @@ export default function Lobby({ estado, online, eu, souHost, conexao, enviar, ao
             </div>
             <ol className="lista" style={{ marginTop: 6 }}>
               {tecnicos.map((t, i) => {
-                const ligado = t.id === eu.id || online.includes(t.id);
+                const ligado = t.bot || t.id === eu.id || online.includes(t.id);
                 return (
                   <li key={t.id}>
                     <span className="av" style={{ '--c': CORES_TEC[i % CORES_TEC.length] }}>
@@ -141,7 +142,7 @@ export default function Lobby({ estado, online, eu, souHost, conexao, enviar, ao
                         {t.id === eu.id && <span style={{ color: 'var(--mute)', fontWeight: 400 }}> (você)</span>}
                       </span>
                       <span style={{ fontSize: 12, color: 'var(--mute)' }}>
-                        {t.id === hostId ? 'Dono da sala' : 'Técnico'}
+                        {t.bot ? 'Bot (joga sozinho)' : t.id === hostId ? 'Dono da sala' : 'Técnico'}
                         {!ligado && ', caiu a conexão'}
                       </span>
                     </span>
@@ -155,6 +156,15 @@ export default function Lobby({ estado, online, eu, souHost, conexao, enviar, ao
                 );
               })}
             </ol>
+            {souHost && tecnicos.length < MAX_TECNICOS && (
+              <button type="button" className="btn escuro" style={{ width: '100%', marginTop: 10, fontSize: 17 }} onClick={() => enviar({ tipo: 'bot' })}>
+                + Adicionar bot
+              </button>
+            )}
+            <p className="dica" style={{ textAlign: 'left', marginTop: 10 }}>
+              Nesta partida entram cerca de <b style={{ color: 'var(--chalk)' }}>{tamanhoDoPote(tecnicos.length, config.emCampo)} jogadores</b> no leilão, sorteados do modo
+              escolhido. Muda com o número de técnicos e o tamanho do time, então nem todo craque aparece.
+            </p>
           </section>
 
           {souHost ? (
@@ -162,7 +172,7 @@ export default function Lobby({ estado, online, eu, souHost, conexao, enviar, ao
               <button type="button" className="btn ouro grande" disabled={tecnicos.length < MIN_TECNICOS} onClick={() => enviar({ tipo: 'comecar' })}>
                 Começar o leilão
               </button>
-              {tecnicos.length < MIN_TECNICOS && <p className="nota-rodape">Chame pelo menos mais um técnico para começar.</p>}
+              {tecnicos.length < MIN_TECNICOS && <p className="nota-rodape">Chame mais um técnico ou adicione um bot para começar.</p>}
             </>
           ) : (
             <p className="nota-rodape" style={{ fontSize: 14 }}>

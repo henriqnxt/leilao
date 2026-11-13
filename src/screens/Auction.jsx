@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { INTRO, TEMPO_INICIAL, cabe } from '../engine/auction.js';
+import { INTRO, TEMPO_INICIAL, cabe, formacaoCabe } from '../engine/auction.js';
+import { formacoes } from '../engine/formations.js';
 import { bandeira, jogador, PAISES } from '../data/jogadores.js';
 import { NOME_POS, NOME_SETOR, SETOR } from '../engine/posicoes.js';
 import { preCarregar } from '../lib/fotos.js';
@@ -229,6 +230,7 @@ export default function Auction({ estado, eu, desvio, conexao, enviar }) {
                 <div className="nm">
                   {t.nome}
                   {t.id === eu.id && <span style={{ color: 'var(--mute)', fontWeight: 400 }}> (você)</span>}
+                  {t.bot && <span style={{ color: 'var(--mute)', fontWeight: 400 }}> · bot</span>}
                 </div>
                 <div className="sub">
                   <span className="din">R$ {tm.caixa}</span>
@@ -349,6 +351,16 @@ export default function Auction({ estado, eu, desvio, conexao, enviar }) {
               <span>VOCÊ</span>
             </div>
             <div className="meu-din">R$ {meu.caixa}</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <span className="sobre">Formação</span>
+            <select className="sel" aria-label="Formação" value={meu.formacao} onChange={(e) => enviar({ tipo: 'formacao', formacao: e.target.value })}>
+              {formacoes(config.emCampo).map((f) => (
+                <option key={f} value={f} disabled={f !== meu.formacao && !formacaoCabe(estado, eu.id, f)}>
+                  {f}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="orcamento">
             <i style={{ width: `${meu.caixa}%` }} />

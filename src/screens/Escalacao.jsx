@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formacoes, vagasDa } from '../engine/formations.js';
 import { forca } from '../engine/campeonato.js';
+import { formacaoCabe } from '../engine/auction.js';
 import { CORES, notaNaVaga } from '../engine/posicoes.js';
 import { jogador } from '../data/jogadores.js';
 import Topo, { AvisoRede } from '../components/Topo.jsx';
@@ -101,7 +102,7 @@ export default function Escalacao({ estado, eu, souHost, conexao, enviar }) {
               }}
             >
               {formacoes(config.emCampo).map((f) => (
-                <option key={f} value={f}>
+                <option key={f} value={f} disabled={f !== meu.formacao && !formacaoCabe(estado, eu.id, f)}>
                   {f}
                 </option>
               ))}
