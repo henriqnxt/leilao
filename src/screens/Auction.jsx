@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { INTRO, TEMPO_INICIAL, cabe, formacaoCabe } from '../engine/auction.js';
+import { INTRO, TEMPO_INICIAL, cabe, formacaoCabe, lanceMaximo } from '../engine/auction.js';
 import { formacoes } from '../engine/formations.js';
 import { bandeira, escala, jogador, PAISES } from '../data/jogadores.js';
 import { NOME_POS, NOME_SETOR, SETOR } from '../engine/posicoes.js';
@@ -76,7 +76,8 @@ export default function Auction({ estado, eu, desvio, conexao, enviar }) {
   const comprados = meu.vagas.filter(Boolean).length;
   const vagasLivres = config.emCampo - comprados;
   const aberto = !L.batido && !naIntro && conexao === 'ok';
-  const posso = (v) => aberto && !naFrente && !passei && cabeAqui && v > L.lance && v <= meu.caixa;
+  const maximo = lanceMaximo(meu); // sempre sobra R$ 1 para cada vaga que ainda falta
+  const posso = (v) => aberto && !naFrente && !passei && cabeAqui && v > L.lance && v <= maximo;
 
   // histórico local dos lances deste lote + plaquinhas
   const [historico, setHistorico] = useState([]);
@@ -158,7 +159,7 @@ export default function Auction({ estado, eu, desvio, conexao, enviar }) {
     const v = parseInt(valor, 10);
     if (!v) return;
     if (v <= L.lance) setErroValor(`Precisa passar de R$ ${L.lance}`);
-    else if (v > meu.caixa) setErroValor(`Você só tem R$ ${meu.caixa}`);
+    else if (v > maximo) setErroValor(`Máximo R$ ${maximo} (R$ 1 por vaga que falta)`);
     else {
       lance(v);
       setValor('');
@@ -179,7 +180,7 @@ export default function Auction({ estado, eu, desvio, conexao, enviar }) {
   else if (!cabeAqui) dica = `Você não tem vaga aberta para ${NOME_SETOR[SETOR[j.pos]].toLowerCase()}.`;
   else if (naFrente && !L.batido) dica = 'O maior lance é seu.';
   else if (passei && !L.batido) dica = 'Você passou este jogador.';
-  else if (meu.caixa <= L.lance && !L.batido) dica = 'Seu caixa não cobre este lance.';
+  else if (maximo <= L.lance && !L.batido) dica = `Seu lance máximo é R$ ${maximo}: precisa sobrar R$ 1 para cada vaga que falta.`;
 
   const corRel = seg <= 3 ? 'var(--live)' : seg <= 6 ? 'var(--gold)' : 'var(--ok)';
   const fracao = naIntro ? 1 : restaMs / TEMPO_INICIAL;
@@ -398,8 +399,8 @@ export default function Auction({ estado, eu, desvio, conexao, enviar }) {
               <small>R$ {L.lance + m}</small>
             </button>
           ))}
-          <button type="button" className="btn vermelho tudo" disabled={!posso(meu.caixa)} onClick={() => lance(meu.caixa)}>
-            Tudo <small>R$ {meu.caixa}</small>
+          <button type="button" className="btn vermelho tudo" disabled={!posso(maximo)} onClick={() => lance(maximo)}>
+            Máximo <small>R$ {maximo}</small>
           </button>
         </div>
         <div className="doca-linha dois">
