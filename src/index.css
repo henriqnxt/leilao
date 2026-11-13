@@ -357,6 +357,40 @@ details.elenco li { display: flex; align-items: center; gap: 8px; font-size: 13p
 .campeao svg { width: 90px; height: 110px; filter: drop-shadow(0 0 30px rgba(242, 193, 78, 0.6)); animation: respira 2.5s infinite; }
 .campeao b { font: 900 clamp(34px, 7vw, 60px)/0.95 var(--f-display); text-transform: uppercase; background: linear-gradient(180deg, #fff, var(--gold)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
+/* ===== jogo ao vivo ===== */
+.aovivo { display: flex; flex-direction: column; gap: 10px; border-color: color-mix(in srgb, var(--live) 45%, var(--line)); }
+.av-topo { display: flex; align-items: center; gap: 10px; }
+.av-ao { font: 800 11px var(--f-body); letter-spacing: 1.4px; text-transform: uppercase; color: var(--live); animation: respira 1.2s infinite; }
+.av-min { margin-left: auto; font: 700 22px var(--f-num); color: var(--amber); text-shadow: 0 0 10px rgba(255, 178, 56, 0.6); }
+.av-placar { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; }
+.av-placar .t { font: 900 clamp(18px, 3vw, 26px)/1 var(--f-display); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.av-placar .t.a { text-align: right; }
+.av-placar b { font: 700 clamp(30px, 5vw, 44px)/1 var(--f-num); background: rgba(0, 0, 0, 0.5); border: 1px solid var(--line-2); border-radius: 10px; padding: 4px 14px; }
+.av-pen { margin: 0; text-align: center; font: 700 15px var(--f-num); color: var(--gold); }
+.posse { display: flex; height: 6px; border-radius: 99px; overflow: hidden; gap: 2px; }
+.posse i { display: block; height: 100%; }
+.posse-txt { display: flex; justify-content: space-between; font: 600 11px var(--f-num); color: var(--mute); margin-top: -6px; }
+.av-campo { position: relative; border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3), 0 14px 36px rgba(0, 0, 0, 0.5); }
+.av-campo svg { display: block; width: 100%; height: auto; }
+.av-campo .jog { transition: transform 0.6s ease; }
+.av-campo .jog text { font: 700 2.4px var(--f-body); fill: #fff; paint-order: stroke; stroke: rgba(0, 0, 0, 0.75); stroke-width: 0.6px; }
+.av-campo .bola { transition: transform 0.9s cubic-bezier(0.3, 0.8, 0.4, 1); }
+.av-campo .pulso { animation: respira 0.6s infinite; }
+.av-gol { position: absolute; inset: 0; display: grid; place-items: center; font: 900 clamp(48px, 12vw, 110px)/1 var(--f-display); color: var(--gold); text-shadow: 0 0 30px rgba(242, 193, 78, 0.8), 0 4px 0 #000; background: rgba(0, 0, 0, 0.35); animation: carimboGol 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+@keyframes carimboGol { from { transform: scale(2); opacity: 0; } }
+.av-feed { display: flex; flex-direction: column; gap: 6px; min-height: 60px; }
+.lance { display: grid; grid-template-columns: 34px 1fr; gap: 8px; font-size: 13px; animation: aparece 0.4s; }
+.lance .m { font: 700 13px var(--f-num); color: var(--amber); }
+.lance.gol b { color: var(--gold); }
+.lance.trave b { color: var(--live); }
+.lance.defesa b, .lance.fora b { color: var(--mute); }
+.av-outros { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
+.av-outro { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--chalk); cursor: pointer; font: 600 13px var(--f-body); }
+.av-outro.atual { border-color: var(--gold); }
+.av-outro .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.av-outro .t.a { text-align: right; }
+.av-outro b { font: 700 16px var(--f-num); }
+
 /* ===== aviso ===== */
 .aviso { max-width: 460px; margin: auto; display: flex; flex-direction: column; gap: 14px; text-align: left; padding-block: 40px; }
 .aviso h1 { margin: 0; font: 900 34px/1 var(--f-display); text-transform: uppercase; color: var(--gold); }

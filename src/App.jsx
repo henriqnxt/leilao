@@ -181,7 +181,7 @@ function Sala({ codigo, eu, aoSair }) {
   } else if (estado.fase === 'escalacao') {
     tela = <Escalacao estado={estado} eu={eu} souHost={souHost} conexao={conexao} enviar={enviar} />;
   } else if (estado.fase === 'campeonato') {
-    tela = <Campeonato estado={estado} eu={eu} souHost={souHost} conexao={conexao} enviar={enviar} />;
+    tela = <Campeonato estado={estado} eu={eu} souHost={souHost} conexao={conexao} enviar={enviar} desvio={desvio} />;
   }
   if (tela) return <FotosDaSala.Provider value={estado.fotos || {}}>{tela}</FotosDaSala.Provider>;
 
