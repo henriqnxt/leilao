@@ -6,7 +6,7 @@
 // O host também reenvia o estado a cada 2 s. Se ele ficar mudo, o próximo da lista assume.
 
 import { novaSala, reduzir } from '../engine/state.js';
-import { ajustarRelogio, avancar } from '../engine/auction.js';
+import { ajustarRelogio, avancar, botsAgem } from '../engine/auction.js';
 
 const BATIDA = 2000; // host reenvia o estado
 const SILENCIO_HOST = 6000; // tempo mudo até alguém assumir
@@ -23,7 +23,8 @@ function maisNovo(a, b) {
 function carregar(chave) {
   try {
     const salvo = JSON.parse(localStorage.getItem(chave));
-    if (salvo && Date.now() - salvo.t < VALIDADE) return salvo.estado;
+    // só aceita estado da versão atual do jogo (com modo de jogo)
+    if (salvo && Date.now() - salvo.t < VALIDADE && salvo.estado && salvo.estado.config && salvo.estado.config.modo) return salvo.estado;
   } catch {
     /* sem estado salvo */
   }
@@ -189,7 +190,8 @@ export function conectarSala({ cliente, codigo, eu, criar, aoMudar }) {
   // Relógio do leilão: só o host anda com ele.
   const cronometro = setInterval(() => {
     if (fechado || conexao !== 'ok' || !souHost()) return;
-    gravar(avancar(estado, Date.now()));
+    const agora = Date.now();
+    gravar(avancar(botsAgem(estado, agora), agora));
   }, 250);
 
   function enviar(acao) {
