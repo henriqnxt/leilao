@@ -24,12 +24,15 @@ const TROCAS = {
   'LD-ZAG': 0.6,
 };
 
-export function rendimento(origem, vaga) {
+// No 5 em campo não tem perda por posição: goleiro só no gol, e qualquer jogador de linha
+// rende 100% em qualquer vaga de linha.
+export function rendimento(origem, vaga, emCampo = 11) {
   if (!origem || !vaga) return 0;
+  if (emCampo === 5) return (origem === 'GOL') === (vaga === 'GOL') ? 1 : 0;
   if (origem === vaga) return 1;
   if (SETOR[origem] !== SETOR[vaga]) return 0;
   return TROCAS[[origem, vaga].sort().join('-')] || 0.7;
 }
 
 // Nota que o jogador entrega naquela vaga.
-export const notaNaVaga = (j, vaga) => (j ? Math.round(j.nota * rendimento(j.pos, vaga)) : 0);
+export const notaNaVaga = (j, vaga, emCampo = 11) => (j ? Math.round(j.nota * rendimento(j.pos, vaga, emCampo)) : 0);

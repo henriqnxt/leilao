@@ -35,7 +35,7 @@ export function forca(s, tid) {
   const elenco = [];
   t.vagas.forEach((id, k) => {
     const j = jogador(id);
-    const n = notaNaVaga(j, posicoes[k]);
+    const n = notaNaVaga(j, posicoes[k], posicoes.length);
     por[SETOR[posicoes[k]]].push(n);
     elenco.push({ id, nome: j ? j.nome : '?', vaga: posicoes[k], n });
   });
@@ -75,7 +75,16 @@ function jogar(r, F, a, b, mata) {
     ...Array.from({ length: ga }, () => ({ t: a, nome: artilheiro(r, F[a].elenco), min: 1 + Math.floor(r() * 90) })),
     ...Array.from({ length: gb }, () => ({ t: b, nome: artilheiro(r, F[b].elenco), min: 1 + Math.floor(r() * 90) })),
   ].sort((x, y) => x.min - y.min);
-  const jogo = { a, b, ga, gb, gols };
+  // lances que não viraram gol (para o jogo ao vivo): defesa do goleiro, bola na trave, para fora
+  const goleiro = (t) => (F[t].elenco.find((e) => e.vaga === 'GOL') || { nome: 'o goleiro' }).nome;
+  const perdidas = (t, outro, l) =>
+    Array.from({ length: poisson(r, l * 1.8) }, () => {
+      const x = r();
+      return { t, nome: artilheiro(r, F[t].elenco), min: 1 + Math.floor(r() * 90), tipo: x < 0.45 ? 'defesa' : x < 0.6 ? 'trave' : 'fora', gk: goleiro(outro) };
+    });
+  const lances = [...gols.map((g) => ({ ...g, tipo: 'gol' })), ...perdidas(a, b, la), ...perdidas(b, a, lb)].sort((x, y) => x.min - y.min);
+  const posse = Math.round(Math.min(68, Math.max(32, 50 + (F[a].MEI - F[b].MEI) * 1.2 + (r() - 0.5) * 8)));
+  const jogo = { a, b, ga, gb, gols, lances, posse };
   if (mata && ga === gb) {
     // pênaltis: goleiro melhor ajuda um pouco
     let pa = 0;
