@@ -84,4 +84,13 @@ export function iniciais(nome) {
   return nome.slice(0, 2).toUpperCase();
 }
 
+// As notas seguem a escala do FIFA de cada competição (Brasileirão vai até ~83, Copa até ~96).
+// "escala" põe todo mundo numa régua comum (60 a 97) para raridade da carta e decisão dos bots.
+const FAIXA = { br: [62, 83], eu: [66, 94], wc: [70, 96] };
+export function escala(j) {
+  if (!j || j.base) return 55;
+  const [lo, hi] = FAIXA[j.modo] || [60, 95];
+  return Math.round(60 + ((j.nota - lo) / (hi - lo)) * 37);
+}
+
 export const bandeira = (pais) => (pais ? `https://flagcdn.com/w80/${pais}.png` : '');
