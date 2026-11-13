@@ -1,63 +1,210 @@
-import { CORES } from '../engine/formations.js';
+import { useMemo, useState } from 'react';
+import { formacoes, vagasDa } from '../engine/formations.js';
+import { forca } from '../engine/campeonato.js';
+import { CORES, notaNaVaga } from '../engine/posicoes.js';
 import { jogador } from '../data/jogadores.js';
-import MeuTime from '../components/MeuTime.jsx';
+import Topo, { AvisoRede } from '../components/Topo.jsx';
+import Campo from '../components/Campo.jsx';
+import { CORES_TEC } from './Lobby.jsx';
 
-const media = (vagas) => Math.round(vagas.reduce((soma, id) => soma + jogador(id).nota, 0) / vagas.length);
+export function TabelaRendimento() {
+  return (
+    <div className="tabela-rend">
+      <div>
+        <b className="verde-t">100%</b>Posição de origem
+      </div>
+      <div>
+        <b className="ouro-t">85–90%</b>Lado trocado (LE↔LD, PE↔PD)
+      </div>
+      <div>
+        <b className="ouro-t">75–80%</b>Ponta no centro, VOL↔MEI
+      </div>
+      <div>
+        <b className="verm-t">60%</b>Zagueiro na lateral e vice-versa
+      </div>
+      <p className="dica" style={{ textAlign: 'left' }}>
+        Só dentro do mesmo setor: goleiro só no gol, defensor só na defesa, e assim por diante.
+      </p>
+    </div>
+  );
+}
 
-// Elencos fechados: aqui as notas aparecem pela primeira vez.
-export default function Escalacao({ estado, eu, conexao, enviar }) {
+export default function Escalacao({ estado, eu, souHost, conexao, enviar }) {
   const { times, tecnicos, config } = estado;
   const meu = times[eu.id];
-  const ranking = [...tecnicos].sort((a, b) => media(times[b.id].vagas) - media(times[a.id].vagas));
+  const [marcada, setMarcada] = useState(null);
+  const [aviso, setAviso] = useState('');
+  const forcas = useMemo(() => Object.fromEntries(tecnicos.map((t) => [t.id, forca(estado, t.id)])), [estado, tecnicos]);
+  const ranking = [...tecnicos].sort((a, b) => forcas[b.id].geral - forcas[a.id].geral);
+  const F = forcas[eu.id];
+  const pagos = Object.values(meu.pagos || {});
+  const caro = Object.entries(meu.pagos || {}).sort((a, b) => b[1] - a[1])[0];
+
+  function tocar(i) {
+    if (marcada === null) {
+      setMarcada(i);
+      setAviso('Agora toque no lugar de destino.');
+      return;
+    }
+    if (marcada !== i) {
+      const pos = vagasDa(config.emCampo, meu.formacao);
+      const a = jogador(meu.vagas[marcada]);
+      const b = jogador(meu.vagas[i]);
+      const ok = (!a || notaNaVaga(a, pos[i]) > 0) && (!b || notaNaVaga(b, pos[marcada]) > 0);
+      if (!ok) setAviso('Não dá: cada jogador só pode ir para uma vaga do próprio setor.');
+      else {
+        enviar({ tipo: 'mover', origem: marcada, destino: i });
+        setAviso('');
+      }
+    } else setAviso('');
+    setMarcada(null);
+  }
+
+  // dono da sala pode trocar foto de um jogador
+  const [fotoId, setFotoId] = useState('');
+  const [fotoUrl, setFotoUrl] = useState('');
+  const comprados = Object.values(times)
+    .flatMap((t) => t.vagas)
+    .filter((id) => id && !String(id).startsWith('base-'))
+    .map(jogador)
+    .sort((a, b) => a.nome.localeCompare(b.nome));
 
   return (
-    <main className="area-segura mx-auto max-w-md px-4">
-      {conexao !== 'ok' && (
-        <p role="status" className="mb-3 rounded-lg bg-cartao px-3 py-2 text-center text-sm font-semibold text-white">
-          Sem conexão com a sala. Tentando de novo…
+    <main className="pagina">
+      <Topo>
+        <span className="chip">
+          Sala <strong>{estado.codigo}</strong>
+        </span>
+      </Topo>
+      <AvisoRede conexao={conexao} />
+      <div>
+        <span className="sobre">Leilão encerrado</span>
+        <h1 className="titulo" style={{ fontSize: 'clamp(32px,5vw,52px)', marginTop: 6 }}>
+          Arrume seu <em>time</em>
+        </h1>
+        <p className="texto" style={{ marginTop: 8 }}>
+          {config.stats ? 'Ajuste a formação e as posições antes do campeonato.' : 'As notas apareceram! Ajuste a formação e as posições antes do campeonato.'}
         </p>
-      )}
+      </div>
 
-      <h1 className="font-placa text-3xl leading-tight text-canario">Elencos fechados</h1>
-      <p className="mt-1 text-base text-giz/80">As notas apareceram. Arrume seu time antes do campeonato.</p>
+      <div className="duas">
+        <section className="painel coluna">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <span className="sobre">Seu time</span>
+            <select
+              className="sel"
+              aria-label="Formação"
+              value={meu.formacao}
+              onChange={(e) => {
+                setMarcada(null);
+                enviar({ tipo: 'formacao', formacao: e.target.value });
+              }}
+            >
+              {formacoes(config.emCampo).map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Campo emCampo={config.emCampo} formacao={meu.formacao} vagas={meu.vagas} modo={config.modo} mostrarStats marcada={marcada} aoTocar={tocar} alto />
+          <p className={`dica ${aviso ? 'alerta' : ''}`}>{aviso || 'Toque em dois jogadores para trocar de lugar. Fora da posição de origem, ele rende menos.'}</p>
+        </section>
 
-      <section className="mt-5">
-        <h2 className="mb-2 flex items-baseline justify-between text-lg font-extrabold">
-          Seu time
-          <span className="text-base font-semibold text-giz/70">média {media(meu.vagas)}</span>
-        </h2>
-        <MeuTime emCampo={config.emCampo} time={meu} mostrarNota enviar={enviar} />
-      </section>
+        <div className="coluna">
+          <section className="painel">
+            <span className="sobre">Força do time</span>
+            <div className="forca-grande">
+              <b>{F.geral}</b>
+              <span style={{ color: 'var(--mute)', fontSize: 13 }}>média com o rendimento por posição</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 8 }}>
+              {[
+                ['GOL', F.GOL],
+                ['DEF', F.DEF],
+                ['MEI', F.MEI],
+                ['ATA', F.ATA],
+              ].map(([k, v]) => (
+                <div className="setor" key={k}>
+                  <span>{k}</span>
+                  <div className="barra">
+                    <i style={{ width: `${Math.round(v)}%` }} />
+                  </div>
+                  {Math.round(v)}
+                </div>
+              ))}
+            </div>
+          </section>
+          <section className="painel" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="kv">
+              <span>Sobrou no caixa</span>
+              <b style={{ color: 'var(--gold)' }}>R$ {meu.caixa}</b>
+            </div>
+            <div className="kv">
+              <span>Gastou</span>
+              <b>R$ {pagos.reduce((a, b) => a + b, 0)}</b>
+            </div>
+            {caro && (
+              <div className="kv">
+                <span>Mais caro</span>
+                <b>
+                  {jogador(caro[0]).nome} · R$ {caro[1]}
+                </b>
+              </div>
+            )}
+          </section>
+          <section className="painel">
+            <span className="sobre">Rendimento por posição</span>
+            <div style={{ marginTop: 8 }}>
+              <TabelaRendimento />
+            </div>
+          </section>
+          {souHost ? (
+            <button type="button" className="btn ouro grande" onClick={() => enviar({ tipo: 'campeonato' })}>
+              Começar o campeonato
+            </button>
+          ) : (
+            <p className="nota-rodape" style={{ fontSize: 14 }}>
+              Quando todos arrumarem o time, o dono da sala começa o campeonato.
+            </p>
+          )}
+        </div>
+      </div>
 
-      <section className="mt-6">
-        <h2 className="text-lg font-extrabold">Todos os elencos</h2>
+      <section className="painel">
+        <span className="sobre">Todos os elencos</span>
         {ranking.map((t) => {
-          const time = times[t.id];
+          const tm = times[t.id];
+          const pos = vagasDa(config.emCampo, tm.formacao);
           return (
-            <details key={t.id} className="mt-2 rounded-xl bg-sombra/70 px-3 py-2.5" open={t.id === eu.id}>
-              <summary className="flex cursor-pointer items-center gap-3 text-base font-semibold">
-                <span className="min-w-0 flex-1 truncate">
+            <details key={t.id} className="elenco" open={t.id === eu.id}>
+              <summary>
+                <span className="av" style={{ '--c': CORES_TEC[tecnicos.indexOf(t) % CORES_TEC.length] }}>
+                  {t.nome[0].toUpperCase()}
+                </span>
+                <span style={{ flex: 1, minWidth: 0, fontWeight: 600 }}>
                   {t.nome}
-                  {t.id === eu.id && <span className="font-normal text-giz/55"> (você)</span>}
+                  {t.id === eu.id && <span style={{ color: 'var(--mute)', fontWeight: 400 }}> (você)</span>}
                 </span>
-                <span className="text-sm text-giz/60">
-                  {time.formacao}, sobrou R$ {time.caixa}
+                <span style={{ fontSize: 12, color: 'var(--mute)' }}>
+                  {tm.formacao} · sobrou R$ {tm.caixa}
                 </span>
-                <span className="font-placa text-xl text-canario">{media(time.vagas)}</span>
+                <b style={{ font: '900 24px var(--f-display)', color: 'var(--gold)' }}>{forcas[t.id].geral}</b>
               </summary>
-              <ul className="mt-2 space-y-1.5">
-                {time.vagas.map((id, i) => {
+              <ul>
+                {tm.vagas.map((id, i) => {
                   const j = jogador(id);
+                  const n = notaNaVaga(j, pos[i]);
                   return (
-                    <li key={`${id}-${i}`} className="flex items-center gap-2 text-base">
-                      <span
-                        className="w-11 shrink-0 rounded px-1 py-0.5 text-center text-xs font-extrabold text-white"
-                        style={{ background: CORES[j.pos] }}
-                      >
-                        {j.pos}
+                    <li key={`${id}-${i}`}>
+                      <span className="pos-tag" style={{ background: CORES[pos[i]] }}>
+                        {pos[i]}
                       </span>
-                      <span className="min-w-0 flex-1 truncate">{j.nome}</span>
-                      <span className="font-extrabold">{j.nota}</span>
+                      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {j.nome} <span style={{ color: 'var(--mute)', fontSize: 12 }}>{j.base ? '' : `· ${j.comp}`}</span>
+                      </span>
+                      {n !== j.nota && <span style={{ fontSize: 11, color: 'var(--live)' }}>{j.pos}</span>}
+                      <b style={{ fontFamily: 'var(--f-num)' }}>{n}</b>
                     </li>
                   );
                 })}
@@ -67,14 +214,34 @@ export default function Escalacao({ estado, eu, conexao, enviar }) {
         })}
       </section>
 
-      <section className="mt-8">
-        <button type="button" disabled className="w-full rounded-xl bg-canario px-5 py-4 text-lg font-extrabold text-sombra opacity-40">
-          Começar o campeonato
-        </button>
-        <p className="mt-2 text-center text-sm text-giz/60">
-          O campeonato chega em uma próxima etapa do jogo.
-        </p>
-      </section>
+      {souHost && comprados.length > 0 && (
+        <section className="painel" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span className="sobre">Trocar foto de um jogador (opcional)</span>
+          <p className="dica" style={{ textAlign: 'left' }}>
+            Se alguma foto veio errada, cole aqui o endereço de outra imagem (começando com https://). Vale para todos da sala.
+          </p>
+          <select className="sel" value={fotoId} onChange={(e) => setFotoId(e.target.value)} aria-label="Jogador">
+            <option value="">Escolha o jogador</option>
+            {comprados.map((j) => (
+              <option key={j.id} value={j.id}>
+                {j.nome} · {j.comp}
+              </option>
+            ))}
+          </select>
+          <input className="campo-texto" style={{ fontSize: 14 }} placeholder="https://…" value={fotoUrl} onChange={(e) => setFotoUrl(e.target.value)} aria-label="Endereço da foto" />
+          <button
+            type="button"
+            className="btn escuro"
+            disabled={!fotoId || (fotoUrl && !fotoUrl.startsWith('https://'))}
+            onClick={() => {
+              enviar({ tipo: 'foto', id: fotoId, url: fotoUrl });
+              setFotoUrl('');
+            }}
+          >
+            {fotoUrl ? 'Salvar foto' : 'Voltar para a foto automática'}
+          </button>
+        </section>
+      )}
     </main>
   );
 }

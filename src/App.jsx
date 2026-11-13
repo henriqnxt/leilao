@@ -6,6 +6,9 @@ import Home from './screens/Home.jsx';
 import Lobby from './screens/Lobby.jsx';
 import Auction from './screens/Auction.jsx';
 import Escalacao from './screens/Escalacao.jsx';
+import Campeonato from './screens/Campeonato.jsx';
+import Estadio from './components/Estadio.jsx';
+import { FotosDaSala } from './lib/fotos.js';
 
 const LETRAS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // sem I e O, que confundem
 
@@ -30,6 +33,15 @@ function meuId() {
 }
 
 export default function App() {
+  return (
+    <>
+      <Estadio />
+      <Conteudo />
+    </>
+  );
+}
+
+function Conteudo() {
   const [codigo, setCodigo] = useState(lerCodigo);
   const [nome, setNome] = useState(() => localStorage.getItem('leilao:nome') || '');
   // Já apertou "entrar"? Quem recarrega a página dentro de uma sala volta direto para ela.
@@ -163,13 +175,15 @@ function Sala({ codigo, eu, aoSair }) {
 
   const enviar = (acao) => sala.current.enviar(acao);
 
+  let tela;
   if (estado.fase === 'leilao') {
-    return <Auction estado={estado} eu={eu} desvio={desvio} conexao={conexao} enviar={enviar} />;
+    tela = <Auction estado={estado} eu={eu} desvio={desvio} conexao={conexao} enviar={enviar} />;
+  } else if (estado.fase === 'escalacao') {
+    tela = <Escalacao estado={estado} eu={eu} souHost={souHost} conexao={conexao} enviar={enviar} />;
+  } else if (estado.fase === 'campeonato') {
+    tela = <Campeonato estado={estado} eu={eu} souHost={souHost} conexao={conexao} enviar={enviar} />;
   }
-
-  if (estado.fase === 'escalacao') {
-    return <Escalacao estado={estado} eu={eu} conexao={conexao} enviar={enviar} />;
-  }
+  if (tela) return <FotosDaSala.Provider value={estado.fotos || {}}>{tela}</FotosDaSala.Provider>;
 
   return (
     <Lobby
@@ -186,23 +200,21 @@ function Sala({ codigo, eu, aoSair }) {
 
 function Aviso({ titulo, children, botao, aoClicar, segundo, aoSegundo }) {
   return (
-    <main className="gramado area-segura mx-auto flex min-h-full max-w-md flex-col justify-center px-5">
-      <h1 className="font-placa text-3xl leading-tight text-canario">{titulo}</h1>
-      {children && <p className="mt-3 text-lg leading-relaxed text-giz/85">{children}</p>}
-      {botao && (
-        <button
-          type="button"
-          onClick={aoClicar}
-          className="mt-6 rounded-xl bg-canario px-5 py-4 text-lg font-extrabold text-sombra active:translate-y-px"
-        >
-          {botao}
-        </button>
-      )}
-      {segundo && (
-        <button type="button" onClick={aoSegundo} className="mt-3 py-3 text-base font-semibold text-giz/80 underline">
-          {segundo}
-        </button>
-      )}
+    <main className="pagina estreita">
+      <div className="aviso">
+        <h1>{titulo}</h1>
+        {children && <p className="texto">{children}</p>}
+        {botao && (
+          <button type="button" className="btn ouro grande" onClick={aoClicar}>
+            {botao}
+          </button>
+        )}
+        {segundo && (
+          <button type="button" className="link" onClick={aoSegundo}>
+            {segundo}
+          </button>
+        )}
+      </div>
     </main>
   );
 }

@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import { EM_CAMPO, FORMATOS, MAX_TECNICOS, MIN_TECNICOS, PACOTES } from '../engine/state.js';
+import { EM_CAMPO, FORMATOS, MAX_TECNICOS, MIN_TECNICOS } from '../engine/state.js';
+import { MODOS } from '../data/jogadores.js';
+import Topo, { AvisoRede } from '../components/Topo.jsx';
+import { Emblema } from '../components/Carta.jsx';
+
+export const CORES_TEC = ['#9fd6ff', '#f2c14e', '#3ddc84', '#ff8a65', '#c792ea', '#ff6b9a', '#7fe0d0', '#ffd166', '#a3b8ff', '#e9a3ff', '#b5e48c', '#ffb4a2', '#90dbf4', '#f7d6e0', '#ffc6ff', '#caffbf'];
 
 export default function Lobby({ estado, online, eu, souHost, conexao, enviar, aoSair }) {
   const [recado, setRecado] = useState('');
@@ -17,159 +22,158 @@ export default function Lobby({ estado, online, eu, souHost, conexao, enviar, ao
       await navigator.clipboard.writeText(link);
       setRecado('Link copiado');
     } catch (erro) {
-      if (erro && erro.name === 'AbortError') return; // fechou o menu de compartilhar
-      setRecado(link); // sem permissão para copiar: mostra o link para copiar na mão
+      if (erro && erro.name === 'AbortError') return;
+      setRecado(link);
     }
     setTimeout(() => setRecado(''), 4000);
   }
 
+  const config_ = (mudanca) => enviar({ tipo: 'config', ...mudanca });
+
   return (
-    <main className="gramado area-segura mx-auto flex min-h-full max-w-md flex-col px-5">
-      {conexao !== 'ok' && (
-        <p role="status" className="mb-3 rounded-lg bg-cartao px-3 py-2 text-center text-sm font-semibold text-white">
-          Sem conexão com a sala. Tentando de novo…
-        </p>
-      )}
+    <main className="pagina">
+      <Topo>
+        <span className="chip">
+          Sala <strong>{codigo}</strong>
+        </span>
+      </Topo>
+      <AvisoRede conexao={conexao} />
 
-      {/* A placa de leilão com o código da sala */}
-      <section className="flex flex-col items-center pt-6">
-        <div className="rounded-[1.4rem] bg-canario px-8 pb-3 pt-4 text-center text-sombra shadow-[0_6px_0_#08231A]">
-          <p className="text-sm font-semibold">Sala</p>
-          <p className="font-placa text-6xl leading-none tracking-[0.12em]">{codigo}</p>
-        </div>
-        <div aria-hidden="true" className="h-9 w-5 rounded-b-md bg-[#B98A2E] shadow-[0_6px_0_#08231A]" />
-        <button
-          type="button"
-          onClick={convidar}
-          className="mt-5 w-full rounded-xl border-2 border-giz px-5 py-3.5 text-lg font-extrabold text-giz active:translate-y-px"
-        >
-          Chamar a galera
-        </button>
-        <p role="status" className="mt-2 min-h-[1.25rem] break-all text-center text-sm text-canario">
-          {recado}
-        </p>
-      </section>
+      <div className="duas">
+        <div className="coluna">
+          <section className="painel">
+            <span className="sobre">Modo de jogo</span>
+            {!souHost && <p className="texto" style={{ fontSize: 13, marginTop: 4 }}>Quem escolhe é {dono ? dono.nome : 'o dono da sala'}.</p>}
+            <div className="modos" style={{ marginTop: 10 }}>
+              {MODOS.map((m) => (
+                <button key={m.id} type="button" className={`modo ${m.id}`} aria-pressed={config.modo === m.id} disabled={!souHost} onClick={() => config_({ modo: m.id })}>
+                  <div className={`emb carta ${m.id}`} style={{ position: 'absolute', inset: 'auto', right: -26, top: -26, width: 150, height: 150, opacity: 0.35 }}>
+                    <Emblema modo={m.id} />
+                  </div>
+                  <span className="marca-ok" aria-hidden="true">
+                    {config.modo === m.id && (
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#06100c" strokeWidth="3.5">
+                        <path d="M5 12l5 5 9-10" />
+                      </svg>
+                    )}
+                  </span>
+                  <h3>{m.nome}</h3>
+                  <p>{m.texto}</p>
+                  <span className="regra">● {m.regra}</span>
+                </button>
+              ))}
+            </div>
+          </section>
 
-      <section className="mt-4">
-        <h2 className="flex items-baseline justify-between text-lg font-extrabold">
-          Técnicos
-          <span className="text-base font-semibold text-giz/60">
-            {tecnicos.length} de {MAX_TECNICOS}
-          </span>
-        </h2>
-        <ol className="mt-2 divide-y divide-giz/10 rounded-xl bg-sombra/70">
-          {tecnicos.map((t, i) => {
-            const ligado = t.id === eu.id || online.includes(t.id);
-            return (
-              <li key={t.id} className="flex items-center gap-3 px-3 py-2.5">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-giz font-placa text-base text-sombra">
-                  {i + 1}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-lg font-semibold">
-                    {t.nome}
-                    {t.id === eu.id && <span className="font-normal text-giz/55"> (você)</span>}
-                  </span>
-                  <span className="block text-sm text-giz/60">
-                    {t.id === hostId ? 'Dono da sala' : 'Técnico'}
-                    {!ligado && ', caiu a conexão'}
-                  </span>
-                </span>
-                <span
-                  aria-label={ligado ? 'online' : 'offline'}
-                  className={`h-3 w-3 shrink-0 rounded-full ${ligado ? 'bg-[#5EE08A]' : 'bg-giz/25'}`}
-                />
-                {souHost && t.id !== hostId && (
-                  <button
-                    type="button"
-                    onClick={() => enviar({ tipo: 'remover', alvo: t.id })}
-                    className="shrink-0 rounded-lg border border-giz/30 px-2.5 py-1.5 text-sm font-semibold text-giz/80"
-                  >
-                    Tirar
+          <section className="painel opcoes">
+            <div>
+              <span className="sobre">Stats nas cartas</span>
+              <div className="seg" style={{ marginTop: 8 }}>
+                <button type="button" aria-pressed={config.stats} disabled={!souHost} onClick={() => config_({ stats: true })}>
+                  Visíveis
+                </button>
+                <button type="button" aria-pressed={!config.stats} disabled={!souHost} onClick={() => config_({ stats: false })}>
+                  Ocultas
+                </button>
+              </div>
+            </div>
+            <div>
+              <span className="sobre">Tamanho do time</span>
+              <div className="seg" style={{ marginTop: 8 }}>
+                {EM_CAMPO.map((o) => (
+                  <button key={o.id} type="button" aria-pressed={config.emCampo === o.id} disabled={!souHost} onClick={() => config_({ emCampo: o.id })}>
+                    {o.nome}
                   </button>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      </section>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span className="sobre">Campeonato</span>
+              <div className="seg" style={{ marginTop: 8 }}>
+                {FORMATOS.map((o) => (
+                  <button key={o.id} type="button" aria-pressed={config.formato === o.id} disabled={!souHost} onClick={() => config_({ formato: o.id })}>
+                    {o.nome}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+          <p className="nota-rodape" style={{ textAlign: 'left' }}>
+            {config.stats
+              ? 'Stats visíveis: todo mundo vê o geral e as stats de cada carta durante o leilão.'
+              : 'Stats ocultas: ninguém vê o geral no leilão. Vale a memória: como esse cara jogou naquele ano? As notas aparecem quando o leilão acaba.'}
+          </p>
+        </div>
 
-      <section className="mt-6">
-        <h2 className="text-lg font-extrabold">Regras desta sala</h2>
-        {!souHost && (
-          <p className="mt-1 text-sm text-giz/60">Quem escolhe é {dono ? dono.nome : 'o dono da sala'}.</p>
-        )}
-        <Escolha
-          titulo="Jogadores no leilão"
-          opcoes={PACOTES}
-          valor={config.pacote}
-          travado={!souHost}
-          aoEscolher={(pacote) => enviar({ tipo: 'config', pacote })}
-        />
-        <Escolha
-          titulo="Tamanho do time"
-          opcoes={EM_CAMPO}
-          valor={config.emCampo}
-          travado={!souHost}
-          aoEscolher={(emCampo) => enviar({ tipo: 'config', emCampo })}
-        />
-        <Escolha
-          titulo="Campeonato"
-          opcoes={FORMATOS}
-          valor={config.formato}
-          travado={!souHost}
-          aoEscolher={(formato) => enviar({ tipo: 'config', formato })}
-        />
-      </section>
-
-      <section className="mt-auto pt-8">
-        {souHost ? (
-          <>
-            <button
-              type="button"
-              disabled={tecnicos.length < MIN_TECNICOS}
-              onClick={() => enviar({ tipo: 'comecar' })}
-              className="w-full rounded-xl bg-canario px-5 py-4 text-lg font-extrabold text-sombra active:translate-y-px disabled:opacity-40"
-            >
-              Começar o leilão
+        <div className="coluna">
+          <section className="painel placa">
+            <div className="p">
+              <span>Sala</span>
+              <b>{codigo}</b>
+            </div>
+            <div className="cabo" aria-hidden="true" />
+            <button type="button" className="btn escuro" style={{ marginTop: 14, width: '100%' }} onClick={convidar}>
+              Chamar a galera
             </button>
-            {tecnicos.length < MIN_TECNICOS && (
-              <p className="mt-2 text-center text-sm text-giz/60">Chame pelo menos mais um técnico para começar.</p>
-            )}
-          </>
-        ) : (
-          <p className="text-center text-base text-giz/75">Esperando {dono ? dono.nome : 'o dono'} começar o leilão.</p>
-        )}
-        <button type="button" onClick={aoSair} className="mt-2 w-full py-3 text-base font-semibold text-giz/80 underline">
-          Sair da sala
-        </button>
-      </section>
-    </main>
-  );
-}
+            <p role="status" style={{ minHeight: 18, margin: '8px 0 0', color: 'var(--gold)', fontSize: 13, wordBreak: 'break-all', textAlign: 'center' }}>
+              {recado}
+            </p>
+          </section>
 
-function Escolha({ titulo, opcoes, valor, travado, aoEscolher }) {
-  return (
-    <fieldset className="mt-4" disabled={travado}>
-      <legend className="text-base font-semibold text-giz/85">{titulo}</legend>
-      <div className="mt-2 flex gap-2">
-        {opcoes.map((o) => {
-          const marcado = o.id === valor;
-          return (
-            <button
-              key={o.id}
-              type="button"
-              aria-pressed={marcado}
-              onClick={() => aoEscolher(o.id)}
-              className={`flex-1 rounded-xl border-2 px-2 py-3 text-[0.95rem] font-semibold leading-tight ${
-                marcado ? 'border-canario bg-canario text-sombra' : 'border-giz/25 text-giz/80'
-              } ${travado && !marcado ? 'opacity-45' : ''}`}
-            >
-              {o.nome}
-            </button>
-          );
-        })}
+          <section className="painel">
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="sobre">Técnicos</span>
+              <span className="sobre">
+                {tecnicos.length} de {MAX_TECNICOS}
+              </span>
+            </div>
+            <ol className="lista" style={{ marginTop: 6 }}>
+              {tecnicos.map((t, i) => {
+                const ligado = t.id === eu.id || online.includes(t.id);
+                return (
+                  <li key={t.id}>
+                    <span className="av" style={{ '--c': CORES_TEC[i % CORES_TEC.length] }}>
+                      {t.nome[0].toUpperCase()}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {t.nome}
+                        {t.id === eu.id && <span style={{ color: 'var(--mute)', fontWeight: 400 }}> (você)</span>}
+                      </span>
+                      <span style={{ fontSize: 12, color: 'var(--mute)' }}>
+                        {t.id === hostId ? 'Dono da sala' : 'Técnico'}
+                        {!ligado && ', caiu a conexão'}
+                      </span>
+                    </span>
+                    <span className={`online ${ligado ? '' : 'off'}`} aria-label={ligado ? 'online' : 'offline'} />
+                    {souHost && t.id !== hostId && (
+                      <button type="button" className="mini-btn" onClick={() => enviar({ tipo: 'remover', alvo: t.id })}>
+                        Tirar
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+
+          {souHost ? (
+            <>
+              <button type="button" className="btn ouro grande" disabled={tecnicos.length < MIN_TECNICOS} onClick={() => enviar({ tipo: 'comecar' })}>
+                Começar o leilão
+              </button>
+              {tecnicos.length < MIN_TECNICOS && <p className="nota-rodape">Chame pelo menos mais um técnico para começar.</p>}
+            </>
+          ) : (
+            <p className="nota-rodape" style={{ fontSize: 14 }}>
+              Esperando {dono ? dono.nome : 'o dono'} começar o leilão.
+            </p>
+          )}
+          <button type="button" className="link" onClick={aoSair}>
+            Sair da sala
+          </button>
+        </div>
       </div>
-    </fieldset>
+    </main>
   );
 }

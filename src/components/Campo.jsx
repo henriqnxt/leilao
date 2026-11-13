@@ -1,48 +1,58 @@
-import { CORES, linhasDa } from '../engine/formations.js';
-import { iniciais, jogador } from '../data/jogadores.js';
+import { coordenadas } from '../engine/formations.js';
+import { notaNaVaga, rendimento } from '../engine/posicoes.js';
+import { jogador } from '../data/jogadores.js';
+import { CartaMini } from './Carta.jsx';
 
-// O time no campo. Toque em duas vagas para trocar os jogadores de lugar.
-export default function Campo({ emCampo, formacao, vagas, mostrarNota, marcada, aoTocar }) {
-  let n = 0;
-  const linhas = linhasDa(emCampo, formacao).map((linha) => linha.map((pos) => ({ pos, i: n++ })));
-
+// O time no campo, com mini-cartas. Mostra quanto cada um rende na vaga em que está.
+// destaque: posição do jogador em leilão (as vagas onde ele cabe piscam com o rendimento).
+export default function Campo({ emCampo, formacao, vagas, modo, mostrarStats, destaque, marcada, aoTocar, alto }) {
+  const pts = coordenadas(emCampo, formacao);
   return (
-    <div className="space-y-2 rounded-xl border-2 border-giz/20 bg-grama px-1.5 py-3">
-      {[...linhas].reverse().map((linha) => (
-        <div key={linha[0].i} className="flex justify-center gap-1">
-          {linha.map(({ pos, i }) => {
-            const j = vagas[i] ? jogador(vagas[i]) : null;
-            const fora = j && j.pos !== pos;
-            return (
-              <button
-                key={i}
-                type="button"
-                disabled={!aoTocar}
-                onClick={() => aoTocar(i)}
-                aria-label={j ? `${j.nome}, jogando de ${pos}` : `Vaga de ${pos} livre`}
-                className={`flex w-[19%] min-w-0 flex-col items-center rounded-lg px-0.5 py-1 ${
-                  marcada === i ? 'bg-canario/25 outline outline-2 outline-canario' : ''
-                }`}
-              >
-                <span
-                  className={`flex h-10 w-10 items-center justify-center rounded-full font-placa text-sm ${
-                    j ? 'text-white' : 'border-2 border-dashed border-giz/45 text-giz/60'
-                  } ${fora ? 'ring-2 ring-cartao' : ''}`}
-                  style={j ? { background: CORES[j.pos] } : undefined}
-                >
-                  {j ? (mostrarNota ? j.nota : iniciais(j.nome)) : pos}
+    <div className={`gramado ${alto ? 'alto' : ''}`}>
+      <svg viewBox="0 0 68 100" preserveAspectRatio="none" aria-hidden="true">
+        <g fill="none" stroke="rgba(255,255,255,.5)" strokeWidth=".35">
+          <line x1="0" y1="50" x2="68" y2="50" />
+          <circle cx="34" cy="50" r="9.15" />
+          <rect x="13.85" y="0" width="40.3" height="16.5" />
+          <rect x="24.85" y="0" width="18.3" height="5.5" />
+          <rect x="13.85" y="83.5" width="40.3" height="16.5" />
+          <rect x="24.85" y="94.5" width="18.3" height="5.5" />
+        </g>
+      </svg>
+      {pts.map(({ pos, x, y }, i) => {
+        const j = vagas[i] ? jogador(vagas[i]) : null;
+        const estilo = { left: `${x}%`, top: `${y}%`, animationDelay: `${i * 40}ms` };
+        const tocar = aoTocar ? () => aoTocar(i) : undefined;
+        const marc = marcada === i ? ' marcada' : '';
+        const Tag = aoTocar ? 'button' : 'div';
+        if (!j) {
+          const f = destaque ? rendimento(destaque, pos) : 0;
+          return (
+            <Tag key={i} type={aoTocar ? 'button' : undefined} className={`mini vazia${f ? ' cabe' : ''}${marc}${aoTocar ? ' tocavel' : ''}`} style={estilo} onClick={tocar} aria-label={`Vaga de ${pos} livre`}>
+              <div className="mc">
+                <span className="vz">
+                  {pos}
+                  {f ? <small>{Math.round(f * 100)}%</small> : null}
                 </span>
-                <span className="mt-0.5 w-full truncate text-center text-xs font-semibold leading-tight text-giz">
-                  {j ? j.nome : 'livre'}
-                </span>
-                <span className={`text-[0.7rem] font-semibold leading-tight ${fora ? 'text-[#FF9A9D]' : 'text-giz/55'}`}>
-                  {fora ? `${j.pos} de ${pos}` : pos}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      ))}
+              </div>
+              <span className="mn-nome" style={{ opacity: 0.75 }}>vaga</span>
+            </Tag>
+          );
+        }
+        const f = rendimento(j.pos, pos);
+        const n = notaNaVaga(j, pos);
+        return (
+          <Tag key={i} type={aoTocar ? 'button' : undefined} className={`mini${marc}${aoTocar ? ' tocavel' : ''}`} style={estilo} onClick={tocar} aria-label={`${j.nome}, ${j.pos} jogando de ${pos}`}>
+            <div className="mc">
+              <CartaMini j={j} modo={j.base ? modo : j.modo || modo} mostrarStats={mostrarStats} />
+              <div className={`mn-nota ${f < 1 ? 'cai' : ''}`}>{mostrarStats ? n : '??'}</div>
+              <div className="mn-pos">{pos}</div>
+              {f < 1 ? <span className={`selo ${f < 0.75 ? 'ruim' : ''}`}>{`${j.pos} · ${Math.round(f * 100)}%`}</span> : null}
+            </div>
+            <span className="mn-nome">{j.nome}</span>
+          </Tag>
+        );
+      })}
     </div>
   );
 }

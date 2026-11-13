@@ -1,4 +1,17 @@
 import { useState } from 'react';
+import Topo from '../components/Topo.jsx';
+import Carta from '../components/Carta.jsx';
+import { idsDoModo, jogador } from '../data/jogadores.js';
+
+const melhor = (modo) =>
+  idsDoModo(modo)
+    .map(jogador)
+    .sort((a, b) => b.nota - a.nota)[0];
+const CAPA = [
+  ['wc', melhor('wc')],
+  ['br', melhor('br')],
+  ['eu', melhor('eu')],
+];
 
 export default function Home({ convite, nomeSalvo, aoEntrar, aoRecusar }) {
   const [nome, setNome] = useState(nomeSalvo);
@@ -9,85 +22,94 @@ export default function Home({ convite, nomeSalvo, aoEntrar, aoRecusar }) {
   const codigoOk = /^[A-Za-z]{4}$/.test(codigo);
 
   return (
-    <main className="gramado area-segura mx-auto flex min-h-full max-w-md flex-col px-5">
-      <header className="pt-24">
-        <h1 className="font-placa text-[2.9rem] leading-[0.95] text-canario">
-          Leilão
-          <br />
-          das Lendas
-        </h1>
-        <p className="mt-4 max-w-[30ch] text-lg leading-snug text-giz/85">
-          R$ 100 pra cada técnico. Craques históricos do Brasil e da Europa, um por um, no martelo.
-        </p>
-      </header>
+    <main className="pagina">
+      <Topo />
+      <section className="capa">
+        <div>
+          <span className="sobre">Leilão de futebol entre amigos</span>
+          <h1 className="titulo" style={{ marginTop: 8 }}>
+            Cada carta é <em>uma temporada</em>
+          </h1>
+          <p className="texto" style={{ marginTop: 12 }}>
+            O geral vale pelo que o jogador fez naquela competição, naquele ano. O craque de um ano pode virar mico no outro. Lembre bem antes de
+            levantar a plaquinha.
+          </p>
+          <div className="fatos">
+            <div>
+              R$ 100<span>por técnico</span>
+            </div>
+            <div>
+              11<span>vagas</span>
+            </div>
+            <div>
+              2–16<span>técnicos</span>
+            </div>
+          </div>
+        </div>
+        <div className="leque" aria-hidden="true">
+          {CAPA.map(([modo, j]) => (
+            <div className="lc" key={modo}>
+              <div className="carta-box">
+                <Carta j={j} modo={modo} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-      <section className="mt-10">
+      <section className="painel entrada" style={{ maxWidth: 560 }}>
         {convite && (
-          <p className="mb-4 rounded-xl border-2 border-dashed border-canario/70 px-4 py-3 text-base">
-            Te chamaram para a sala <strong className="font-placa tracking-wider text-canario">{convite}</strong>
+          <p className="convite" style={{ margin: 0 }}>
+            Te chamaram para a sala <strong>{convite}</strong>
           </p>
         )}
-
-        <label htmlFor="apelido" className="block text-base font-semibold">
-          Seu apelido de técnico
-        </label>
-        <input
-          id="apelido"
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          maxLength={16}
-          autoComplete="nickname"
-          placeholder="Ex.: Telê"
-          className="mt-2 w-full rounded-xl border-2 border-giz/30 bg-sombra px-4 py-4 text-xl font-semibold text-giz placeholder:text-giz/35 focus:border-canario focus:outline-none"
-        />
+        <div>
+          <label htmlFor="apelido" className="rotulo">
+            Seu apelido de técnico
+          </label>
+          <input
+            id="apelido"
+            className="campo-texto"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            maxLength={16}
+            autoComplete="nickname"
+            placeholder="Ex.: Telê"
+          />
+        </div>
 
         {convite ? (
           <>
-            <button
-              type="button"
-              disabled={!nomeOk}
-              onClick={() => aoEntrar(nome)}
-              className="mt-4 w-full rounded-xl bg-canario px-5 py-4 text-lg font-extrabold text-sombra active:translate-y-px disabled:opacity-40"
-            >
+            <button type="button" className="btn ouro grande" disabled={!nomeOk} onClick={() => aoEntrar(nome)}>
               Entrar na sala {convite}
             </button>
-            <button type="button" onClick={aoRecusar} className="mt-2 w-full py-3 text-base font-semibold text-giz/80 underline">
+            <button type="button" className="link" onClick={aoRecusar}>
               Prefiro criar outra sala
             </button>
           </>
         ) : (
           <>
-            <button
-              type="button"
-              disabled={!nomeOk}
-              onClick={() => aoEntrar(nome)}
-              className="mt-4 w-full rounded-xl bg-canario px-5 py-4 text-lg font-extrabold text-sombra active:translate-y-px disabled:opacity-40"
-            >
+            <button type="button" className="btn ouro grande" disabled={!nomeOk} onClick={() => aoEntrar(nome)}>
               Criar sala
             </button>
-
             {comCodigo ? (
-              <div className="mt-4 flex gap-2">
+              <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   aria-label="Código da sala"
+                  className="campo-texto codigo"
                   value={codigo}
                   onChange={(e) => setCodigo(e.target.value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 4))}
                   placeholder="ABCD"
                   autoCapitalize="characters"
                   autoComplete="off"
-                  className="w-0 flex-1 rounded-xl border-2 border-giz/30 bg-sombra px-4 py-4 text-center font-placa text-2xl tracking-[0.3em] text-canario placeholder:text-giz/25 focus:border-canario focus:outline-none"
+                  style={{ flex: 1, minWidth: 0 }}
                 />
-                <button
-                  type="button"
-                  disabled={!nomeOk || !codigoOk}
-                  onClick={() => aoEntrar(nome, codigo.toUpperCase())}
-                  className="rounded-xl border-2 border-giz px-5 text-lg font-extrabold text-giz active:translate-y-px disabled:opacity-40"
-                >
+                <button type="button" className="btn escuro" disabled={!nomeOk || !codigoOk} onClick={() => aoEntrar(nome, codigo.toUpperCase())}>
                   Entrar
                 </button>
               </div>
             ) : (
-              <button type="button" onClick={() => setComCodigo(true)} className="mt-2 w-full py-3 text-base font-semibold text-giz/80 underline">
+              <button type="button" className="link" onClick={() => setComCodigo(true)}>
                 Tenho um código de sala
               </button>
             )}
@@ -95,9 +117,7 @@ export default function Home({ convite, nomeSalvo, aoEntrar, aoRecusar }) {
         )}
       </section>
 
-      <p className="mt-auto pt-10 text-sm leading-relaxed text-giz/55">
-        Sem cadastro. Crie a sala, mande o link no grupo e pronto: de 2 a 16 técnicos.
-      </p>
+      <p className="nota-rodape">Sem cadastro. Crie a sala, mande o link no grupo e pronto. Fotos: Wikipédia e Wikimedia Commons.</p>
     </main>
   );
 }
