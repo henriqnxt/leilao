@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { bandeira, ROTULOS, stats as statsDe } from '../data/jogadores.js';
 import { useFoto } from '../lib/fotos.js';
 
@@ -73,7 +73,7 @@ export function FotoCarta({ j, modo }) {
 }
 
 // Carta completa (leilão, capa). "mostrarStats" falso esconde nota, stats e raridade.
-export default function Carta({ j, modo, mostrarStats = true, lote, estilo, refCarta }) {
+function Carta({ j, modo, mostrarStats = true, lote, estilo, refCarta }) {
   const r = raridade(j.nota, mostrarStats);
   const goleiro = j.pos === 'GOL';
   const valores = statsDe(j);
@@ -153,3 +153,5 @@ export function CartaMini({ j, modo, mostrarStats }) {
     </div>
   );
 }
+
+export default memo(Carta);

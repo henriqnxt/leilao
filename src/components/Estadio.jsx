@@ -43,6 +43,7 @@ export default function Estadio() {
       raf = parado ? 0 : requestAnimationFrame(quadro);
       if (ts - ultimo < 33 && !parado) return; // ~30 fps basta
       ultimo = ts;
+      if (!W || !H || !torcida || !torcida.height) return; // janela ainda sem tamanho
       const t = ts / 1000;
       const g = sx.createLinearGradient(0, 0, 0, H);
       g.addColorStop(0, '#03070a');

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { coordenadas } from '../engine/formations.js';
 import { notaNaVaga, rendimento } from '../engine/posicoes.js';
 import { jogador } from '../data/jogadores.js';
@@ -5,7 +6,7 @@ import { CartaMini } from './Carta.jsx';
 
 // O time no campo, com mini-cartas. Mostra quanto cada um rende na vaga em que está.
 // destaque: posição do jogador em leilão (as vagas onde ele cabe piscam com o rendimento).
-export default function Campo({ emCampo, formacao, vagas, modo, mostrarStats, destaque, marcada, aoTocar, alto }) {
+function Campo({ emCampo, formacao, vagas, modo, mostrarStats, destaque, marcada, aoTocar, alto }) {
   const pts = coordenadas(emCampo, formacao);
   return (
     <div className={`gramado ${alto ? 'alto' : ''}`}>
@@ -56,3 +57,5 @@ export default function Campo({ emCampo, formacao, vagas, modo, mostrarStats, de
     </div>
   );
 }
+
+export default memo(Campo);
