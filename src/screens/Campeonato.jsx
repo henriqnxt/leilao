@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import AoVivo, { duracaoDe } from '../components/AoVivo.jsx';
-import { classificacao } from '../engine/campeonato.js';
+import { classificacao, classificados, forca, nomeDoProximo, pendentes } from '../engine/campeonato.js';
+import Penaltis from '../components/Penaltis.jsx';
+import PainelTatica from '../components/PainelTatica.jsx';
 import { confete, som } from '../lib/efeitos.js';
 import Topo, { AvisoRede } from '../components/Topo.jsx';
 import { CORES_TEC } from './Lobby.jsx';
@@ -27,17 +29,23 @@ function Jogo({ g, nome }) {
         {g.ga} × {g.gb}
       </span>
       <span className={`t ${g.vence === g.b ? 'ganhou' : ''}`}>{nome(g.b)}</span>
-      {(g.gols.length > 0 || g.pen) && (
+      {(g.gols.length > 0 || g.pen || g.penPendente) && (
         <div className="gols">
           {gols(g.a).join(', ')}
           {gols(g.a).length && gols(g.b).length ? '  |  ' : ''}
           {gols(g.b).join(', ')}
           {g.pen ? ` — Pênaltis: ${g.pen[0]} × ${g.pen[1]}` : ''}
+          {g.penPendente ? ' — Pênaltis em andamento' : ''}
         </div>
       )}
     </div>
   );
 }
+
+const pendentesOuFeitos = (camp) => {
+  const ult = camp.passos[camp.passos.length - 1];
+  return ult ? ult.jogos.flatMap((g) => (g.disputa ? g.disputa.cob : [])) : [];
+};
 
 export default function Campeonato({ estado, eu, souHost, conexao, enviar, desvio = 0 }) {
   const [agora, setAgora] = useState(Date.now());
@@ -61,9 +69,38 @@ export default function Campeonato({ estado, eu, souHost, conexao, enviar, desvi
   const rodadas = vistos.filter((p) => p.tipo === 'rodada');
   const temTabela = camp.passos.some((p) => p.tipo === 'rodada');
   const tabela = temTabela ? classificacao(ids, rodadas.map((p) => p.jogos)) : [];
-  const vagasMata = camp.passos.some((p) => p.tipo === 'mata') && temTabela ? (ids.length >= 4 ? 4 : 2) : 0;
-  const acabou = camp.visto >= camp.passos.length && !aoVivo;
-  const proximo = camp.passos[camp.visto];
+  const vagasMata = camp.formato === 'ambos' ? classificados(ids.length) : 0;
+  // deixa a última cobrança da final aparecer antes de anunciar o campeão
+  const ultimaCob = Math.max(0, ...pendentesOuFeitos(camp).map((c) => c.quando || 0));
+  const acabou = !!camp.campeao && !aoVivo && !pendentes(camp).length && agora > ultimaCob + desvio + 3500;
+  const proximo = acabou ? null : nomeDoProximo(estado, camp);
+  const [mudando, setMudando] = useState(false);
+  // pênaltis só começam quando o jogo ao vivo termina; os do próprio técnico aparecem primeiro
+  const pend = aoVivo ? [] : pendentes(camp).sort((x, y) => Number(y.g.a === eu.id || y.g.b === eu.id) - Number(x.g.a === eu.id || x.g.b === eu.id));
+  // a última disputa que acabou continua na tela até o próximo jogo (pra ver a última cobrança)
+  const [disputas, setDisputas] = useState([]);
+  useEffect(() => {
+    setDisputas((velhas) => {
+      const ids = pend.map((p) => `${p.passo}:${p.jogo}`);
+      const novas = [...velhas.filter((x) => !ids.includes(x)), ...ids];
+      return novas.length === velhas.length && novas.every((x, k) => x === velhas[k]) ? velhas : novas;
+    });
+  }, [pend.map((p) => `${p.passo}:${p.jogo}`).join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (aoVivo) setDisputas([]);
+  }, [aoVivo]);
+  const naTela = aoVivo
+    ? []
+    : disputas
+        .map((k) => {
+          const [i, j] = k.split(':').map(Number);
+          const g = camp.passos[i] && camp.passos[i].jogos[j];
+          return g && g.disputa ? { passo: i, jogo: j, g } : null;
+        })
+        .filter(Boolean)
+        .sort((x, y) => Number(y.g.a === eu.id || y.g.b === eu.id) - Number(x.g.a === eu.id || x.g.b === eu.id));
+  const esperandoPen = pend.length > 0;
+  const noJogoAoVivo = aoVivo && passoAo.jogos.some((g) => !g.folga && (g.a === eu.id || g.b === eu.id));
 
   const avisou = useRef(false);
   useEffect(() => {
@@ -129,6 +166,19 @@ export default function Campeonato({ estado, eu, souHost, conexao, enviar, desvi
       <div className="duas">
         <div className="coluna">
           {aoVivo && <AoVivo key={ao.passo} passo={passoAo} inicio={inicioAo} estado={estado} eu={eu} nome={nome} cor={cor} />}
+          {noJogoAoVivo && (
+            <>
+              <button type="button" className="btn ouro" onClick={() => setMudando((m) => !m)}>
+                {mudando ? 'Fechar' : 'Mudar tática agora'}
+                <small>vale para o resto do jogo</small>
+              </button>
+              {mudando && <PainelTatica estado={estado} eu={eu} enviar={enviar} titulo="Mudança com o jogo rolando" comInstrucoes={false} />}
+            </>
+          )}
+          {naTela.map((p) => (
+            <Penaltis key={`${p.passo}:${p.jogo}`} g={p.g} passo={p.passo} jogo={p.jogo} eu={eu} nome={nome} cor={cor} enviar={enviar} souHost={souHost} destaque={p.g.a === eu.id || p.g.b === eu.id} />
+          ))}
+          {!aoVivo && !acabou && !esperandoPen && proximo && <PainelTatica estado={estado} eu={eu} enviar={enviar} titulo={`Seu time para: ${proximo}`} />}
           {[...vistos].reverse().map((p) => (
             <section className="painel" key={p.nome}>
               <span className="sobre">{p.nome}</span>
@@ -141,7 +191,7 @@ export default function Campeonato({ estado, eu, souHost, conexao, enviar, desvi
             <section className="painel">
               <span className="sobre">Força dos times</span>
               {[...ids]
-                .sort((a, b) => camp.forcas[b].geral - camp.forcas[a].geral)
+                .sort((a, b) => forca(estado, b).geral - forca(estado, a).geral)
                 .map((id) => (
                   <div className="kv" key={id} style={{ padding: '6px 0' }}>
                     <span>
@@ -149,7 +199,7 @@ export default function Campeonato({ estado, eu, souHost, conexao, enviar, desvi
                       {id === eu.id ? ' (você)' : ''}
                     </span>
                     <b>
-                      {camp.forcas[id].geral} · ATA {camp.forcas[id].ATA} · DEF {camp.forcas[id].DEF}
+                      {forca(estado, id).geral}
                     </b>
                   </div>
                 ))}
@@ -191,7 +241,7 @@ export default function Campeonato({ estado, eu, souHost, conexao, enviar, desvi
                   </tbody>
                 </table>
               </div>
-              {vagasMata > 0 && <p className="dica" style={{ textAlign: 'left', marginTop: 8 }}>Os {vagasMata} primeiros vão para o mata-mata.</p>}
+              {vagasMata > 0 && <p className="dica" style={{ textAlign: 'left', marginTop: 8 }}>{vagasMata === 4 ? 'Os 4 primeiros vão para a semifinal.' : 'Os 2 primeiros vão direto para a final.'}</p>}
             </section>
           )}
           {souHost && aoVivo && (
@@ -199,10 +249,11 @@ export default function Campeonato({ estado, eu, souHost, conexao, enviar, desvi
               Ver resultado agora
             </button>
           )}
-          {souHost && !acabou && !aoVivo && (
+          {!aoVivo && esperandoPen && <p className="dica">Pênaltis em andamento — o campeonato segue quando acabarem.</p>}
+          {souHost && !acabou && !aoVivo && !esperandoPen && (
             <>
               <button type="button" className="btn ouro grande" onClick={() => enviar({ tipo: 'revelar' })}>
-                {proximo ? `Jogar: ${proximo.nome}` : 'Ver resultado'}
+                {proximo ? `Jogar: ${proximo}` : 'Ver resultado'}
               </button>
               <button type="button" className="link" onClick={() => enviar({ tipo: 'revelar', tudo: true })}>
                 Pular para o final

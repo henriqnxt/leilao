@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { formacoes, vagasDa } from '../engine/formations.js';
 import { forca } from '../engine/campeonato.js';
 import { formacaoCabe } from '../engine/auction.js';
-import { encaixe, ESTILOS, MARCACOES, PERDENDO, TATICA_PADRAO } from '../engine/tatica.js';
+import PainelTatica from '../components/PainelTatica.jsx';
 import { OPCOES, padrao } from '../engine/instrucoes.js';
 import { CORES, notaNaVaga } from '../engine/posicoes.js';
 import { jogador } from '../data/jogadores.js';
@@ -40,9 +40,7 @@ export default function Escalacao({ estado, eu, souHost, conexao, enviar }) {
   const forcas = useMemo(() => Object.fromEntries(tecnicos.map((t) => [t.id, forca(estado, t.id)])), [estado, tecnicos]);
   const ranking = [...tecnicos].sort((a, b) => forcas[b.id].geral - forcas[a.id].geral);
   const F = forcas[eu.id];
-  const tat = meu.tatica || TATICA_PADRAO;
-  const melhorEnc = Math.max(...ESTILOS.map((e) => encaixe(F, e.id)));
-  const mudarTatica = (mud) => enviar({ tipo: 'tatica', tatica: mud });
+
   const pagos = Object.values(meu.pagos || {});
   const caro = Object.entries(meu.pagos || {}).sort((a, b) => b[1] - a[1])[0];
 
@@ -168,46 +166,7 @@ export default function Escalacao({ estado, eu, souHost, conexao, enviar }) {
               ))}
             </div>
           </section>
-          <section className="painel tatica">
-            <span className="sobre">Tática · vale metade do jogo</span>
-            <div className="tat-grupo">
-              <span className="tat-rot">Como atacar</span>
-              <div className="tat-op">
-                {ESTILOS.map((e) => (
-                  <button key={e.id} type="button" aria-pressed={tat.estilo === e.id} onClick={() => mudarTatica({ estilo: e.id })}>
-                    <b>{e.nome}</b>
-                    <span className={`enc ${Math.round(encaixe(F, e.id)) >= melhorEnc - 1 ? 'top' : ''}`}>encaixe {Math.round(encaixe(F, e.id))}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="tat-grupo">
-              <span className="tat-rot">Marcação</span>
-              <div className="seg">
-                {MARCACOES.map((m) => (
-                  <button key={m.id} type="button" aria-pressed={tat.marcacao === m.id} onClick={() => mudarTatica({ marcacao: m.id })}>
-                    {m.nome}
-                  </button>
-                ))}
-              </div>
-              <p className="dica" style={{ textAlign: 'left' }}>{MARCACOES.find((m) => m.id === tat.marcacao).dica}</p>
-            </div>
-            <div className="tat-grupo">
-              <span className="tat-rot">Se estiver perdendo</span>
-              <div className="seg">
-                {PERDENDO.map((m) => (
-                  <button key={m.id} type="button" aria-pressed={tat.perdendo === m.id} onClick={() => mudarTatica({ perdendo: m.id })}>
-                    {m.nome}
-                  </button>
-                ))}
-              </div>
-              <p className="dica" style={{ textAlign: 'left' }}>{PERDENDO.find((m) => m.id === tat.perdendo).dica}</p>
-            </div>
-            <p className="dica" style={{ textAlign: 'left' }}>
-              O "encaixe" mostra quanto seu elenco rende em cada estilo: pelas alas usa pontas e laterais, pelo meio usa meias e centroavante, contra-ataque usa
-              os atacantes (e mata quem marca alto) e posse usa volantes e meias.
-            </p>
-          </section>
+          <PainelTatica estado={estado} eu={eu} enviar={enviar} comFormacao={false} comInstrucoes={false} />
           <section className="painel" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div className="kv">
               <span>Sobrou no caixa</span>
