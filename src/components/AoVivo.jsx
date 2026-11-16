@@ -6,7 +6,9 @@ import { ESTILOS, MARCACOES } from '../engine/tatica.js';
 
 // Jogo ao vivo: 90 minutos em 60 s, igual para todos (o relógio vem do dono da sala).
 // A bola passa de pé em pé: cada lance do resultado vira uma jogada com passes até a finalização.
-export const DURACAO = 60000;
+import { DURACAO } from '../engine/campeonato.js';
+
+export { DURACAO };
 export const PENALTIS = 7000;
 export const duracaoDe = (passo) => DURACAO + (passo.jogos.some((g) => g.pen) ? PENALTIS : 0);
 const PASSO = 850; // tempo entre toques na bola
@@ -67,7 +69,7 @@ function montarJogadas(g, A, B, taticas) {
   const toques = [];
   // jogadas que terminam em finalização
   const reservado = [];
-  g.lances.forEach((l) => {
+  g.lances.filter((l) => ['gol', 'defesa', 'trave', 'fora'].includes(l.tipo)).forEach((l) => {
     const tFim = (l.min / 90) * DURACAO;
     const lista = time(l.t);
     const estilo = (taticas && taticas[l.t] && taticas[l.t].estilo) || 'meio';
@@ -102,7 +104,7 @@ function montarJogadas(g, A, B, taticas) {
   return toques.sort((x, y) => x.t - y.t);
 }
 
-const TEXTO = { gol: 'GOL!', defesa: 'Defesa de', trave: 'Na trave!', fora: 'Pra fora' };
+const TEXTO = { gol: 'GOL!', defesa: 'Defesa de', trave: 'Na trave!', fora: 'Pra fora', amarelo: 'Amarelo', vermelho: 'Expulso!' };
 const sigla = (n) => n.replace(/ Bot$/, '').slice(0, 3).toUpperCase();
 
 export default function AoVivo({ passo, inicio, estado, eu, nome, cor }) {
@@ -114,7 +116,7 @@ export default function AoVivo({ passo, inicio, estado, eu, nome, cor }) {
   const meuJogo = jogos.find((g) => g.a === eu.id || g.b === eu.id);
   const [escolhido, setEscolhido] = useState(null);
   const g = jogos.find((x) => `${x.a}-${x.b}` === escolhido) || meuJogo || jogos[0];
-  const taticas = (estado.camp && estado.camp.taticas) || {};
+  const taticas = g.taticas || {};
 
   const placar = (x) => [
     x.lances.filter((l) => l.tipo === 'gol' && l.t === x.a && l.min <= min).length,
@@ -166,13 +168,17 @@ export default function AoVivo({ passo, inicio, estado, eu, nome, cor }) {
     const puxa = p.vaga === 'GOL' ? 0 : (bola.y - p.y) * 0.12;
     return { x: p.x + dir * sobe + Math.sin(t * 0.8 + k2) * 0.8, y: p.y + puxa + Math.cos(t * 0.7 + k2 * 1.7) * 0.8 };
   };
-  const PA = A.map((p, i) => ({ ...p, ...mover(p, i, true) }));
-  const PB = B.map((p, i) => ({ ...p, ...mover(p, i, false) }));
+  const fora = (t) => g.lances.filter((l) => l.tipo === 'vermelho' && l.t === t && l.min <= min).map((l) => curto(l.nome));
+  const amarelo = (t) => g.lances.filter((l) => l.tipo === 'amarelo' && l.t === t && l.min <= min).map((l) => curto(l.nome));
+  const PA = A.map((p, i) => ({ ...p, ...mover(p, i, true), fora: fora(g.a).includes(p.nome), am: amarelo(g.a).includes(p.nome) }));
+  const PB = B.map((p, i) => ({ ...p, ...mover(p, i, false), fora: fora(g.b).includes(p.nome), am: amarelo(g.b).includes(p.nome) }));
+  const cartao = [...g.lances].reverse().find((l) => (l.tipo === 'amarelo' || l.tipo === 'vermelho') && l.min <= min && min - l.min <= 1);
   const pos = (tq) => (tq.time === g.a ? PA : PB)[tq.i];
 
   const flashGol = atual && atual.tipo === 'gol' && passou - atual.t < 2600;
+  const narraCartao = cartao && !flashGol ? `${cartao.tipo === 'vermelho' ? 'EXPULSO' : 'AMARELO'}: ${cartao.nome}${cartao.motivo ? ` (${cartao.motivo})` : ''}` : null;
   let narra = 'Bola rolando…';
-  if (nosPenaltis) narra = g.pen ? 'Disputa de pênaltis!' : 'Fim de jogo';
+  if (nosPenaltis) narra = g.pen ? 'Disputa de pênaltis!' : g.penPendente ? 'Empate! Vai para os pênaltis' : 'Fim de jogo';
   else if (atual && comBola) {
     if (atual.tipo === 'gol') narra = `GOOOL! ${atual.lance.nome} (${atual.lance.como || 'finalização'})`;
     else if (atual.tipo === 'defesa') narra = `${atual.lance.gk} defende o chute de ${comBola.nome}!`;
@@ -253,14 +259,15 @@ export default function AoVivo({ passo, inicio, estado, eu, nome, cor }) {
           {anterior && atual && anterior.time === atual.time && atual.tipo === 'passe' && (
             <line key={k} className="rastro" x1={pos(anterior).x} y1={pos(anterior).y} x2={pos(atual).x} y2={pos(atual).y} />
           )}
-          {[...PA.map((p, i) => ({ ...p, c: cor(g.a), dono: atual && atual.time === g.a && atual.i === i })), ...PB.map((p, i) => ({ ...p, c: cor(g.b), dono: atual && atual.time === g.b && atual.i === i }))].map((p, i) => (
-            <g key={i} className={`jog ${p.dono ? 'dono' : ''}`} style={{ transform: `translate(${p.x}px, ${p.y}px)` }}>
+          {[...PA.map((p, i) => ({ ...p, c: cor(g.a), dono: atual && atual.time === g.a && atual.i === i })), ...PB.map((p, i) => ({ ...p, c: cor(g.b), dono: atual && atual.time === g.b && atual.i === i }))].filter((p) => !p.fora).map((p, i) => (
+            <g key={p.c + p.nome + i} className={`jog ${p.dono ? 'dono' : ''}`} style={{ transform: `translate(${p.x}px, ${p.y}px)` }}>
               <ellipse cx=".4" cy="2.4" rx="2" ry=".7" fill="rgba(0,0,0,.35)" />
               {p.dono && <circle r="3.4" className="halo" />}
               <circle r="2" fill={p.c} stroke="rgba(0,0,0,.65)" strokeWidth=".35" />
               <text y="4.7" textAnchor="middle">
                 {p.nome}
               </text>
+              {p.am && <rect x="1.6" y="-3.4" width="1.3" height="1.8" rx=".2" fill="#ffd400" stroke="#000" strokeWidth=".15" />}
             </g>
           ))}
           <g className="bola" style={{ transform: `translate(${bola.x}px, ${bola.y}px)` }}>
@@ -269,8 +276,8 @@ export default function AoVivo({ passo, inicio, estado, eu, nome, cor }) {
             <circle r=".35" fill="#222" />
           </g>
         </svg>
-        <div className="narracao" key={narra}>
-          {narra}
+        <div className={`narracao ${narraCartao ? (cartao.tipo === 'vermelho' ? 'verm' : 'amar') : ''}`} key={narraCartao || narra}>
+          {narraCartao || narra}
         </div>
         {flashGol && (
           <div className="av-gol">
@@ -301,7 +308,9 @@ export default function AoVivo({ passo, inicio, estado, eu, nome, cor }) {
           <div key={`${l.min}-${i}`} className={`lance ${l.tipo}`}>
             <span className="m">{l.min}'</span>
             <span>
+              {l.tipo === 'amarelo' || l.tipo === 'vermelho' ? <i className={`cartao ${l.tipo}`} /> : null}
               <b>{TEXTO[l.tipo]}</b> {l.tipo === 'defesa' ? `${l.gk} pega o chute de ${l.nome}` : l.nome}
+              {l.motivo ? <span className="como"> · {l.motivo}</span> : null}
               {l.como ? <span className="como"> · {l.como}</span> : null}
               <span style={{ color: 'var(--mute)' }}> · {nome(l.t)}</span>
             </span>
