@@ -1,7 +1,7 @@
 // Regras da sala. Funções puras: recebem o estado e uma ação, devolvem o novo estado.
 // Só o host roda isto "valendo"; os outros recebem o resultado pronto.
 import { iniciarLeilao, reduzirLeilao } from './auction.js';
-import { montarCampeonato } from './campeonato.js';
+import { jogarProximo, jogarTudo, montarCampeonato, penalti, reSimular } from './campeonato.js';
 
 export const MAX_TECNICOS = 16;
 export const MIN_TECNICOS = 2; // conta bots: dá para jogar sozinho contra bots
@@ -116,12 +116,15 @@ export function reduzir(s, a) {
     }
 
     case 'revelar': {
-      if (!souHost || s.fase !== 'campeonato' || !s.camp) return s;
-      const visto = Math.min(s.camp.passos.length, a.tudo ? s.camp.passos.length : s.camp.visto + 1);
-      if (visto === s.camp.visto) return s;
-      // a rodada revelada passa "ao vivo", minuto a minuto, para todos ao mesmo tempo
-      const aoVivo = a.tudo ? null : { passo: visto - 1, inicio: a.agora || Date.now() };
-      return { ...s, camp: { ...s.camp, visto, aoVivo } };
+      if (!souHost || s.fase !== 'campeonato' || !s.camp || s.camp.campeao) return s;
+      return a.tudo ? jogarTudo(s, a.agora || Date.now()) : jogarProximo(s, a.agora || Date.now());
+    }
+
+    // pênaltis: quem bate escolhe o canto, quem defende escolhe o pulo; o dono pode sortear se alguém sumir
+    case 'penalti': {
+      if (s.fase !== 'campeonato' || !s.camp) return s;
+      if (a.sortear && !souHost) return s;
+      return penalti(s, a.de, a.passo, a.jogo, a.zona, a.agora || Date.now(), !!a.sortear);
     }
 
     case 'fimAoVivo': {
@@ -142,7 +145,11 @@ export function reduzir(s, a) {
       return { ...s, fotos: { ...(s.fotos || {}), [a.id]: url } };
     }
 
-    default:
-      return reduzirLeilao(s, a);
+    default: {
+      const novo = reduzirLeilao(s, a);
+      // mudou tática/formação com o jogo rolando: o resto da partida é simulado de novo
+      if (novo !== s && s.fase === 'campeonato') return reSimular(novo, a.de, a.agora || Date.now());
+      return novo;
+    }
   }
 }

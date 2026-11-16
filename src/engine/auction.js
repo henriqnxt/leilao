@@ -93,9 +93,12 @@ export function tamanhoDoPote(nTecnicos, emCampo) {
   return Object.entries(v).reduce((a, [setor, k]) => a + Math.ceil(nTecnicos * k * FOLGA_SETOR[setor]) + 1, 0);
 }
 
-function sortearPote(modo, nTecnicos, emCampo) {
+function sortearPote(modo, nTecnicos, emCampo, recentes = []) {
   const v = VAGAS_SETOR[emCampo] || VAGAS_SETOR[11];
-  const todos = embaralhar(idsDoModo(modo));
+  // quem saiu na partida anterior da sala vai pro fim da fila do sorteio: cada partida é diferente
+  const ja = new Set(recentes);
+  const mist = embaralhar(idsDoModo(modo));
+  const todos = [...mist.filter((id) => !ja.has(id)), ...mist.filter((id) => ja.has(id))];
   const pote = [];
   Object.entries(v).forEach(([setor, k]) => {
     const quer = Math.ceil(nTecnicos * k * FOLGA_SETOR[setor]) + 1;
@@ -111,8 +114,8 @@ export function iniciarLeilao(s, agora) {
   s.tecnicos.forEach((t) => {
     times[t.id] = { caixa: CAIXA, formacao, vagas: Array(emCampo).fill(null), pagos: {} };
   });
-  const fila = sortearPote(modo, s.tecnicos.length, emCampo);
-  return { ...s, fase: 'leilao', times, leilao: lote({ fila }, 0, agora) };
+  const fila = sortearPote(modo, s.tecnicos.length, emCampo, s.recentes && s.recentes.modo === modo ? s.recentes.ids : []);
+  return { ...s, fase: 'leilao', times, recentes: { modo, ids: fila }, leilao: lote({ fila }, 0, agora) };
 }
 
 // ===== Bots =====
@@ -254,7 +257,8 @@ export function avancar(s, agora) {
 }
 
 export function reduzirLeilao(s, a) {
-  if (s.fase !== 'leilao' && s.fase !== 'escalacao') return s;
+  if (s.fase !== 'leilao' && s.fase !== 'escalacao' && s.fase !== 'campeonato') return s;
+  if (s.fase === 'campeonato' && !['formacao', 'tatica', 'instrucao', 'mover'].includes(a.tipo)) return s;
   const t = s.times && s.times[a.de];
   if (!t) return s;
   const { emCampo } = s.config;
@@ -284,7 +288,7 @@ export function reduzirLeilao(s, a) {
       const posicoes = vagasDa(emCampo, a.formacao);
       let vagas = reposicionar(t.vagas, posicoes);
       if (!vagas) return s; // alguém ficaria fora do setor: não troca
-      if (s.fase === 'escalacao') vagas = vagas.map((v, k) => v || `base-${posicoes[k]}`);
+      if (s.fase !== 'leilao') vagas = vagas.map((v, k) => v || `base-${posicoes[k]}`);
       return { ...s, times: { ...s.times, [a.de]: { ...t, formacao: a.formacao, vagas } } };
     }
 
