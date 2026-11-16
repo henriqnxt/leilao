@@ -16,6 +16,8 @@ export const PAISES = {
   rs: 'Sérvia', pt: 'Portugal', es: 'Espanha', fr: 'França', de: 'Alemanha', it: 'Itália', nl: 'Holanda', be: 'Bélgica',
   hr: 'Croácia', se: 'Suécia', pl: 'Polônia', cz: 'Tchéquia', si: 'Eslovênia', ch: 'Suíça', at: 'Áustria', ua: 'Ucrânia',
   no: 'Noruega', ro: 'Romênia', bg: 'Bulgária', ru: 'Rússia', 'gb-eng': 'Inglaterra', 'gb-sct': 'Escócia', 'gb-wls': 'País de Gales',
+  ve: 'Venezuela', bo: 'Bolívia', au: 'Austrália', is: 'Islândia', dz: 'Argélia', sk: 'Eslováquia', ba: 'Bósnia', ga: 'Gabão',
+  ma: 'Marrocos', cr: 'Costa Rica', dk: 'Dinamarca', kr: 'Coreia do Sul', jp: 'Japão', ca: 'Canadá', za: 'África do Sul', tr: 'Turquia',
   ng: 'Nigéria', ci: 'Costa do Marfim', sn: 'Senegal', eg: 'Egito', gh: 'Gana', cm: 'Camarões', us: 'Estados Unidos', mx: 'México',
 };
 
